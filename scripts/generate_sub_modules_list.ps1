@@ -1,0 +1,1 @@
+﻿Get-ChildItem -File -Recurse ./Private/*.psm1 | ForEach-Object { "using module " + $_.FullName.Replace("$pwd\", "") }

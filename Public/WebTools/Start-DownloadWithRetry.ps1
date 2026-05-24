@@ -1,0 +1,122 @@
+﻿function Start-DownloadWithRetry {
+  <#
+    .SYNOPSIS
+      Downloads a file from a specified Uri with retries.
+
+    .DESCRIPTION
+      The Start-DownloadWithRetry cmdlet attempts to download a file from the specified Uri to a local path.
+      It includes retry logic for handling transient failures, allowing you to specify the maximum number of retries and the delay between attempts.
+
+    .EXAMPLE
+      $d = Start-DownloadWithRetry -Uri "https://pastebin.com/raw/JVciSv1S"
+
+    .EXAMPLE
+      $baseUri = 'https://github.com/PowerShell/PowerShell/releases/download'
+      @(
+        "$baseUri/v7.3.0-preview.5/PowerShell-7.3.0-preview.5-win-x64.msi"
+        "$baseUri/v7.3.0-preview.5/PowerShell-7.3.0-preview.5-win-x64.zip"
+        "$baseUri/v7.2.5/PowerShell-7.2.5-win-x64.zip"
+        "$baseUri/v7.2.5/PowerShell-7.2.5-win-x64.msi"
+      ) | % { Start-DownloadWithRetry $_}
+
+    .EXAMPLE
+      Start-DownloadWithRetry -Uri "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_5mb.mp4" -Name "mysamplevideo.mp4" -DownloadPath $pwd
+
+      Downloads a video to mysamplevideo.mp4 from the specified Uri and saves it as 'mysamplevideo.mp4' in the $pwd directory.
+
+    .EXAMPLE
+      $link = (iwr -Method Get -Uri https://catalog.data.gov/dataset/national-student-loan-data-system-722b0 -SkipHttpErrorCheck -verbose:$false).Links.Where({ $_.href.EndsWith(".xls") })[0].href
+      Start-DownloadWithRetry -Uri $link -Retries 3 -SecondsBetweenAttempts 10
+
+      Attempts to download the file with a maximum of 3 retries, waiting 10 seconds between each attempt.
+
+    .EXAMPLE
+      Start-DownloadWithRetry -Uri $link -WhatIf
+
+      Displays what would happen if the cmdlet runs without actually downloading the file.
+
+    .EXAMPLE
+      Start-DownloadWithRetry -Uri $link -Verbose
+
+      Provides detailed output about the download process, including retry attempts and success/failure messages.
+
+    .NOTES
+      Author: Alain Herve
+      Version: 1.1
+
+    .LINK
+      Online Version: https://github.com/chadnpc/cliHelper.Core/blob/main/Public/Network/WebTools/Start-DownloadWithRetry.ps1
+  #>
+  [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseShouldProcessForStateChangingFunctions", "")]
+  [Alias('DownloadWithRetry')][OutputType([IO.FileInfo])]
+  [CmdletBinding(ConfirmImpact = 'Medium', SupportsShouldProcess = $false)]
+  param(
+    # Specifies the Uri of the file to download. This parameter is mandatory.
+    [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
+    [ValidateScript({
+        if (([cryptobase]::IsValidUrl($_))) {
+          return $true
+        }; throw [System.ArgumentException]::new("Please Provide a valid Uri: $_", "Uri")
+      })]
+    [ValidateNotNullOrWhiteSpace()]
+    [string]$Uri,
+
+    # Specifies the name of the file to save locally. If not provided, the file name will be derived from the Uri.
+    [Parameter(Mandatory = $false, Position = 1)]
+    [Alias('n')][ValidateNotNullOrWhiteSpace()]
+    [string]$Name,
+
+    # Specifies the local directory where the file will be saved. Defaults to the current directory.
+    [Parameter(Mandatory = $false, Position = 2)]
+    [Alias('dlPath')][ValidateNotNullOrWhiteSpace()]
+    [string]$DownloadPath = (Get-Location).Path,
+
+    # Specifies the maximum number of retry attempts if the download fails. Defaults to 5.
+    [Parameter(Mandatory = $false, Position = 3)]
+    [Alias('r')]
+    [int]$Retries = 5,
+
+    # Specifies the delay, in seconds, between retry attempts. Defaults to 5 seconds.
+    [Parameter(Mandatory = $false, Position = 4)]
+    [Alias('s', 'timeout')]
+    [int]$SecondsBetweenAttempts = 1,
+
+    # Specifies a custom message to display during the download process.
+    [Parameter(Mandatory = $false, Position = 5)]
+    [Alias('m')]
+    [string]$Message = "Downloading file",
+
+    # Allows cancellation of the download operation using a System.Threading.CancellationToken.
+    [Parameter(Mandatory = $false, Position = 6)]
+    [System.Threading.CancellationToken]$CancellationToken = [System.Threading.CancellationToken]::None,
+
+    [Parameter(Mandatory = $false, Position = 7)]
+    [string]$caller
+  )
+
+  process {
+    if ([String]::IsNullOrEmpty($Name)) { $Name = [IO.Path]::GetFileName($Uri) }
+    $OutputFilePath = [IO.Path]::Combine([PsModuleBase]::GetUnResolvedPath($DownloadPath), $Name)
+    try {
+      $use_verbose = $VerbosePreference -eq 'Continue' -or $verbose.IsPresent
+      $SplatParams = @{
+        ScriptBlock            = { param([uri]$Uri, [string]$OutFile, $dlEvent, [bool]$verbose) return [IO.FileInfo][dlh]::DownloadFileAsync($Uri, $OutFile, $dlEvent, $verbose) }
+        ArgumentList           = @([uri]$Uri, [string]$OutputFilePath, [dlh]::New(), [bool]$use_verbose)
+        MaxAttempts            = $Retries
+        SecondsBetweenAttempts = $SecondsBetweenAttempts
+        Message                = $Message
+        CancellationToken      = $CancellationToken
+        Verbose                = $use_verbose
+        Caller                 = $caller
+      }
+      $result = Invoke-RetriableCommand @SplatParams
+    }
+    catch {
+      throw $_
+    }
+  }
+
+  end {
+    return $result.Output
+  }
+}
