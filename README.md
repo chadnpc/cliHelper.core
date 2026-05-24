@@ -1,5 +1,5 @@
 <h2>
-<img align="right" width="250" height="250" alt="Icon" src="https://github.com/user-attachments/assets/3ac2b40e-2aec-453f-bfb5-44b38788494e" />
+<img align="right" width="250" height="250" alt="Icon" src="https://github.com/chadnpc/cliHelper.core/blob/main/.github/pc.png" />
 </h2>
 <div align="Left">
   <a href="https://www.powershellgallery.com/packages/cliHelper.core"><b>cliHelper.core</b></a>
