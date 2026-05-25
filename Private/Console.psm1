@@ -37,4 +37,6 @@ using module .\Console\Tree.psm1
 using module .\Console\Utilities.psm1
 using module .\Console\Widgets.psm1
 
-# todo create a console-convenience helper class to get capabilities
+# todo : a console-convenience helper class to get capabilities
+class ConsoleHelper {
+}

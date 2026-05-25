@@ -2,7 +2,7 @@
 using module .\Console\Colors.psm1
 using module .\Models.psm1
 using module .\Console.psm1
-using module .\Console\Ui.psm1
+using module .\Console\Internal.psm1
 
 class FileTools {
   static [PSObject] GetItemSize([string]$Path) {

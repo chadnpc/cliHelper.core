@@ -1,6 +1,6 @@
 using module .\Models.psm1
 using module .\Console.psm1
-using module .\Console\Ui.psm1
+using module .\Console\Internal.psm1
 using module .\Utilities.psm1
 
 # downloadhelper
