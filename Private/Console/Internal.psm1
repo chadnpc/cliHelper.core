@@ -140,7 +140,7 @@ class ConsoleWriter : System.IO.TextWriter {
 
   ConsoleWriter() : base() {
     $this.PsObject.Properties.Add([psscriptproperty]::new("UseLeadPreffix", { return ![string]::IsNullOrWhiteSpace($this.LeadPreffix) }))
-    $this.PsObject.Properties.Add([PsNoteProperty]::new("UseTypingEffect", $true ))
+    $this.PsObject.Properties.Add([PsNoteProperty]::new("UseTypingEffect", $false ))
   }
 
   [string] write([string]$text) {

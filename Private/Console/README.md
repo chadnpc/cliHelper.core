@@ -18,10 +18,7 @@ Contains pure classes for providing beautiful console UI elements without extern
 
 ```powershell
 Import-Module .\cliHelper.core.psd1 -Verbose -Force
-
-$console = [AnsiConsole]::Console
-$console.MarkupLine('[bold green]Hello from AnsiConsole[/]')
-$console.Write([Panel]::new([Markup]::new('[yellow]Pure PowerShell classes[/]')))
+[ConsoleHelper]::DemoMarkup()
 ```
 
 ## Usage Examples
@@ -29,79 +26,31 @@ $console.Write([Panel]::new([Markup]::new('[yellow]Pure PowerShell classes[/]'))
 ### 1) Text and Markup
 
 ```powershell
-$console = [AnsiConsole]::Console
-
-$console.Write([Text]::new('Plain text output'))
-$console.WriteLine('')
-$console.Write([Markup]::new('[yellow]Warning:[/] disk usage high'))
-$console.WriteLine('')
+[ConsoleHelper]::DemoTextandMarkup()
 ```
 
 ### 2) Panels, Rules, and Alignment. 
 
 ```powershell
-$console = [AnsiConsole]::Console
-
-$panel = [Panel]::new([Markup]::new('[green]Build completed[/]'))
-$panel.Header = [PanelHeader]::new('CI Status')
-
-$aligned = [Align]::Center($panel)
-
-$console.Write([Rule]::new('Deployment'))
-$console.Write($aligned)
+[ConsoleHelper]::DemoPanelsRulesandAlignment()
 ```
 
 ### 3) Tables. 
 
 ```powershell
-$table = [Table]::new()
-[void]$table.AddColumn([TableColumn]::new('Name'))
-[void]$table.AddColumn([TableColumn]::new('Role'))
-[void]$table.AddRow(@('Harvey', 'Closer'))
-[void]$table.AddRow(@('Donna', 'COO'))
-
-[AnsiConsole]::Console.Write($table)
+[ConsoleHelper]::DemoTables()
 ```
 
 ### 4) Rows, Columns, and Grid. 
 
 ```powershell
-$console = [AnsiConsole]::Console
-
-$rows = [Rows]::new(@(
-  [Markup]::new('[bold]Service A[/]'),
-  [Markup]::new('[dim]Healthy[/]')
-))
-$console.Write($rows)
-
-$grid = [Grid]::new()
-$grid.AddColumn() | Out-Null
-$grid.AddColumn() | Out-Null
-[void]$grid.AddRow(@(
-  [Markup]::new('[bold]Region[/]'),
-  [Markup]::new('[bold]Latency[/]')
-))
-[void]$grid.AddRow(@(
-  [Text]::new('us-east-1'),
-  [Markup]::new('[green]24 ms[/]')
-))
-[void]$grid.AddRow(@(
-  [Text]::new('eu-west-1'),
-  [Markup]::new('[yellow]67 ms[/]')
-))
-
-$console.Write($grid)
+[ConsoleHelper]::DemoRowsColumnsandGrid()
 ```
 
 ### 5) Tree Rendering.  
 
 ```powershell
-$tree = [Tree]::new('Root')
-$branch = $tree.Root.AddNode('Branch 1')
-[void]$branch.AddNode('Leaf 1.1')
-[void]$tree.Root.AddNode('Branch 2')
-
-[AnsiConsole]::Console.Write($tree)
+[ConsoleHelper]::DemoTreeRendering()
 ```
 
 ### 6) Spinner Definitions. 
@@ -178,28 +127,7 @@ $multi.AddChoice('Scheduler', 'scheduler')
 ### 10) Charts and Calendar. 
 
 ```powershell
-$console = [AnsiConsole]::Console
-
-$chart = [BarChart]::new()
-$chart.AddItem('API', 92, [Color]::Green) | Out-Null
-$chart.AddItem('DB', 65, [Color]::Yellow) | Out-Null
-$chart.AddItem('IO', 35, [Color]::Red) | Out-Null
-$console.Write($chart)
-
-$breakdown = [BreakdownChart]::new()
-$breakdown.AddItem('Tests', 120, [Color]::Blue) | Out-Null
-$breakdown.AddItem('Lint', 35, [Color]::Green) | Out-Null
-$breakdown.AddItem('Package', 10, [Color]::Yellow) | Out-Null
-$console.Write($breakdown)
-
-$calendar = [Calendar]::new(
-  [datetime]::new(2026, 5, 22),
-  [datetime[]]@(
-    [datetime]::new(2026, 5, 1),
-    [datetime]::new(2026, 5, 15)
-  )
-)
-$console.Write($calendar)
+[ConsoleHelper]::DemoChartsandCalendar()
 ```
 
 ### 11) Emoji Replacement. 
@@ -214,8 +142,7 @@ $console.Write($calendar)
 `FigletText` is still an incomplete implementation / feature-complete yet.
 
 ```powershell
-$fig = [FigletText]::new([FigletFont]::DEFAULT_3D, 'ansiconsole')
-[AnsiConsole]::Console.Write($fig)
+[ConsoleHelper]::DemoFigletText()
 ```
 
 ### 13) JSON Rendering. 
