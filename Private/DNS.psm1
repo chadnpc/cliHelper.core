@@ -1,5 +1,5 @@
 
-using module ./IPManagement.psm1
+using module .\IPManagement.psm1
 
 class DNS {
   static [void] GetDNSHostEntryAsync([string[]] $ComputerName) {

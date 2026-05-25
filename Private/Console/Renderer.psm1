@@ -11,13 +11,22 @@ class ConsoleRenderer {
     if ($null -eq $renderable) { return }
 
     $writer = [AnsiWriter]($console.get_Writer())
-    if ($null -eq $writer) { return }
+    if ($null -eq $writer) {
+      Write-Debug "Console does not have ANSI output writer."
+      return
+    }
 
     $consoleProfile = $console.Profile
-    if ($null -eq $consoleProfile) { return }
+    if ($null -eq $consoleProfile) {
+      Write-Debug "Console does not have a valid profile."
+      return
+    }
 
     $renderOptions = $consoleProfile.CreateRenderOptions()
-    if ($null -eq $renderOptions) { return }
+    if ($null -eq $renderOptions) {
+      Write-Debug "Failed to create render options."
+      return
+    }
 
     $maxWidth = $consoleProfile.GetWidth()
 
