@@ -111,15 +111,15 @@ class AnsiWriter {
   }
 
   [void] Write([string]$text) {
-    $this._output.Write($text)
+    $this._output.WriteRaw($text)
   }
 
   [void] WriteLine() {
-    $this._output.WriteLine()
+    $this._output.WriteRaw("`n")
   }
 
   [void] WriteLine([string]$text) {
-    $this._output.WriteLine($text)
+    $this._output.WriteRaw($text + "`n")
   }
 
   [void] Write([string]$text, [Style]$style) {
