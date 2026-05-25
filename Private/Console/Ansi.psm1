@@ -86,11 +86,11 @@ class AnsiCodeBuilder {
 }
 
 class AnsiWriter {
-  hidden [TextWriter]$_output
+  hidden [ConsoleWriter]$_output
   hidden [int]$_linkCount
   [AnsiCapabilities]$Capabilities
 
-  AnsiWriter([TextWriter]$output) {
+  AnsiWriter([ConsoleWriter]$output) {
     $this._output = $output
     $this.Capabilities = [AnsiCapabilities]::new()
     $this.Capabilities.Ansi = $true
@@ -99,7 +99,7 @@ class AnsiWriter {
     $this._linkCount = 0
   }
 
-  [TextWriter] GetOutput() {
+  [ConsoleWriter] GetOutput() {
     return $this._output
   }
 

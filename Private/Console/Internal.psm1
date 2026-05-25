@@ -134,46 +134,49 @@ class ConsoleReader : System.IO.TextReader {
 }
 
 class ConsoleWriter : System.IO.TextWriter {
-  static hidden [string] $LeadPreffix
-  static hidden [bool] $UseTypingEffect = $true
-  static hidden [bool] $UseLeadPreffix = ![string]::IsNullOrWhiteSpace([ConsoleWriter]::LeadPreffix)
+  hidden [string] $LeadPreffix
   static hidden [string[]] $Colors = [ConsoleWriter]::get_ColorNames()
-  static hidden [ValidateNotNull()][scriptblock]$ValidateScript = { param($arg) if ([String]::IsNullOrEmpty($arg)) { throw [ArgumentNullException]::new('text', 'Cannot be Null Or Empty') } }
+  hidden [ValidateNotNull()][scriptblock]$ValidateScript = { param($arg) if ([String]::IsNullOrEmpty($arg)) { throw [ArgumentNullException]::new('text', 'Cannot be Null Or Empty') } }
 
-  static [string] write([string]$text) {
-    return [ConsoleWriter]::Write($text, 20, 1200)
+  ConsoleWriter() : base() {
+    $this.PsObject.Properties.Add([psscriptproperty]::new("UseLeadPreffix", { return ![string]::IsNullOrWhiteSpace($this.LeadPreffix) }))
+    $this.PsObject.Properties.Add([PsNoteProperty]::new("UseTypingEffect", $true ))
   }
-  static [string] Write([string]$text, [bool]$AddPreffix) {
-    return [ConsoleWriter]::Write($text, 20, 1200, $AddPreffix)
+
+  [string] write([string]$text) {
+    return $this.Write($text, 20, 1200)
   }
-  static [string] Write([string]$text, [int]$Speed, [int]$Duration) {
-    return [ConsoleWriter]::Write($text, 20, 1200, [ConsoleWriter]::UseLeadPreffix)
+  [string] write([string]$text, [bool]$AddPreffix) {
+    return $this.Write($text, 20, 1200, $AddPreffix)
   }
-  static [string] write([string]$text, [ConsoleColor]$color) {
-    return [ConsoleWriter]::Write($text, $color, [ConsoleWriter]::UseTypingEffect)
+  [string] write([string]$text, [int]$Speed, [int]$Duration) {
+    return $this.Write($text, 20, 1200, $this.UseLeadPreffix)
   }
-  static [string] write([string]$text, [ConsoleColor]$color, [bool]$Animate) {
-    return [ConsoleWriter]::Write($text, [ConsoleWriter]::LeadPreffix, 20, 1200, $color, $Animate, [ConsoleWriter]::LeadPreffix)
+  [string] write([string]$text, [ConsoleColor]$color) {
+    return $this.Write($text, $color, $this.UseTypingEffect)
   }
-  static [string] write([string]$text, [int]$Speed, [int]$Duration, [bool]$AddPreffix) {
-    return [ConsoleWriter]::Write($text, [ConsoleWriter]::LeadPreffix, $Speed, $Duration, [ConsoleColor]::White, [ConsoleWriter]::UseTypingEffect, $AddPreffix)
+  [string] write([string]$text, [ConsoleColor]$color, [bool]$Animate) {
+    return $this.Write($text, $this.LeadPreffix, 20, 1200, $color, $Animate, $this.LeadPreffix)
   }
-  static [string] write([string]$text, [ConsoleColor]$color, [bool]$Animate, [bool]$AddPreffix) {
-    return [ConsoleWriter]::Write($text, [ConsoleWriter]::LeadPreffix, 20, 1200, $color, $Animate, $AddPreffix)
+  [string] write([string]$text, [int]$Speed, [int]$Duration, [bool]$AddPreffix) {
+    return $this.Write($text, $this.LeadPreffix, $Speed, $Duration, [ConsoleColor]::White, $this.UseTypingEffect, $AddPreffix)
   }
-  static [string] write([string]$text, [string]$Preffix, [System.ConsoleColor]$color) {
-    return [ConsoleWriter]::Write($text, $Preffix, $color, [ConsoleWriter]::UseTypingEffect)
+  [string] write([string]$text, [ConsoleColor]$color, [bool]$Animate, [bool]$AddPreffix) {
+    return $this.Write($text, $this.LeadPreffix, 20, 1200, $color, $Animate, $AddPreffix)
   }
-  static [string] write([string]$text, [string]$Preffix, [System.ConsoleColor]$color, [bool]$Animate) {
-    return [ConsoleWriter]::Write($text, $Preffix, 20, 1200, $color, $Animate, [ConsoleWriter]::LeadPreffix)
+  [string] write([string]$text, [string]$Preffix, [System.ConsoleColor]$color) {
+    return $this.Write($text, $Preffix, $color, $this.UseTypingEffect)
   }
-  static [string] write([string]$text, [string]$Preffix, [int]$Speed, [int]$Duration, [bool]$AddPreffix) {
-    return [ConsoleWriter]::Write($text, $Preffix, $Speed, $Duration, [ConsoleColor]::White, [ConsoleWriter]::UseTypingEffect, $AddPreffix)
+  [string] write([string]$text, [string]$Preffix, [System.ConsoleColor]$color, [bool]$Animate) {
+    return $this.Write($text, $Preffix, 20, 1200, $color, $Animate, $this.LeadPreffix)
   }
-  static [string] write([string]$text, [string]$Preffix, [int]$Speed, [int]$Duration, [ConsoleColor]$color, [bool]$Animate, [bool]$AddPreffix) {
-    return [ConsoleWriter]::Write($text, $Preffix, $Speed, $Duration, $color, $Animate, $AddPreffix, [ConsoleWriter]::ValidateScript)
+  [string] write([string]$text, [string]$Preffix, [int]$Speed, [int]$Duration, [bool]$AddPreffix) {
+    return $this.Write($text, $Preffix, $Speed, $Duration, [ConsoleColor]::White, $this.UseTypingEffect, $AddPreffix)
   }
-  static [string] write([string]$text, [string]$Preffix, [int]$Speed, [int]$Duration, [ConsoleColor]$color, [bool]$Animate, [bool]$AddPreffix, [scriptblock]$ValidateScript) {
+  [string] write([string]$text, [string]$Preffix, [int]$Speed, [int]$Duration, [ConsoleColor]$color, [bool]$Animate, [bool]$AddPreffix) {
+    return $this.Write($text, $Preffix, $Speed, $Duration, $color, $Animate, $AddPreffix, $this.ValidateScript)
+  }
+  [string] write([string]$text, [string]$Preffix, [int]$Speed, [int]$Duration, [ConsoleColor]$color, [bool]$Animate, [bool]$AddPreffix, [scriptblock]$ValidateScript) {
     if ($null -ne $ValidateScript) {
       [void]$ValidateScript.Invoke($text)
     } elseif ([string]::IsNullOrWhiteSpace($text)) {
@@ -183,7 +186,7 @@ class ConsoleWriter : System.IO.TextWriter {
     # Check if delay time is required:
     $delayIsRequired = if ($length -lt 50) { $false } else { $delay = $Duration - $length * $Speed; $delay -gt 0 }
     if ($AddPreffix -and ![string]::IsNullOrEmpty($Preffix)) {
-      [void][ConsoleWriter]::Write($Preffix, [string]::Empty, 1, 100, [ConsoleColor]::Green, $false, $false);
+      [void]$this.Write($Preffix, [string]::Empty, 1, 100, [ConsoleColor]::Green, $false, $false);
     }
     $FgColr = [Console]::ForegroundColor
     [Console]::ForegroundColor = $color; $hostUI = (Get-Host).UI
@@ -201,7 +204,9 @@ class ConsoleWriter : System.IO.TextWriter {
     [Console]::ForegroundColor = $FgColr
     return $text
   }
-  static [byte[]] Encode([string]$text) { return [System.Text.Encoding]::UTF8.GetBytes($text) }
+  static [byte[]] Encode([string]$text) {
+    return [System.Text.Encoding]::UTF8.GetBytes($text)
+  }
   static [string[]] get_ColorNames() {
     return [RGB].GetMethods().Where({ $_.IsStatic -and $_.Name -like "Get_*" }).Name.Substring(4)
   }
@@ -223,12 +228,12 @@ class ConsoleWriter : System.IO.TextWriter {
   static [void] ResetColor() {
     [System.Console]::ResetColor()
   }
-  static [void] WriteLine([string]$text) {
-    [void][ConsoleWriter]::Write($text)
+  [void] WriteLine([string]$text) {
+    [void]$this.Write($text)
     [System.Console]::WriteLine()
   }
-  static [void] WriteLine([string]$text, [ConsoleColor]$color) {
-    [void][ConsoleWriter]::Write($text, $color)
+  [void] WriteLine([string]$text, [ConsoleColor]$color) {
+    [void]$this.Write($text, $color)
     [System.Console]::WriteLine()
   }
 }
