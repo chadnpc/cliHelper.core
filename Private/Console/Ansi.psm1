@@ -90,7 +90,14 @@ class AnsiWriter {
   hidden [int]$_linkCount
   [AnsiCapabilities]$Capabilities
 
+  AnsiWriter() {
+    $this.initialize([ConsoleWriter]::new())
+  }
   AnsiWriter([ConsoleWriter]$output) {
+    $this.initialize($output)
+  }
+
+  hidden [void] initialize ([ConsoleWriter]$output) {
     $this._output = $output
     $this.Capabilities = [AnsiCapabilities]::new()
     $this.Capabilities.Ansi = $true
