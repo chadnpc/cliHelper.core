@@ -159,7 +159,7 @@ class AnsiConsoleFactory {
     }
 
     if ($null -eq $settings.Out) {
-      $settings.Out = [AnsiConsoleOutput]::new([Console]::Out)
+      $settings.Out = [AnsiConsoleOutput]::new([ConsoleWriter]::new())
     }
 
     $writer = [AnsiWriter]::new($settings.Out.Writer)
@@ -211,8 +211,8 @@ class AnsiConsoleFactory {
 }
 
 class AnsiConsoleOutput {
-  [System.IO.TextWriter]$Writer
-  AnsiConsoleOutput([System.IO.TextWriter]$writer) {
+  [ConsoleWriter]$Writer
+  AnsiConsoleOutput([ConsoleWriter]$writer) {
     $this.Writer = $writer
   }
 }
@@ -220,7 +220,7 @@ class AnsiConsoleOutput {
 class AnsiConsoleSettings {
   [AnsiSupport]$Ansi = [AnsiSupport]::Detect
   [ColorSystemSupport]$ColorSystem = [ColorSystemSupport]::Detect
-  [AnsiConsoleOutput]$Out = [AnsiConsoleOutput]::new([System.Console]::Out)
+  [AnsiConsoleOutput]$Out = [AnsiConsoleOutput]::new([ConsoleWriter]::new())
 }
 
 class Profile {
@@ -231,7 +231,7 @@ class Profile {
 
   Profile() {
     $this.Capabilities = [AnsiCapabilities]::new()
-    $this.Out = [AnsiConsoleOutput]::new([Console]::Out)
+    $this.Out = [AnsiConsoleOutput]::new([ConsoleWriter]::new())
     $this.Width = 0
     $this.Height = 0
   }
