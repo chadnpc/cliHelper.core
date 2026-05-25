@@ -136,7 +136,7 @@ class ConsoleReader : System.IO.TextReader {
 class ConsoleWriter : System.IO.TextWriter {
   hidden [string] $LeadPreffix
   static hidden [string[]] $Colors = [ConsoleWriter]::get_ColorNames()
-  hidden [ValidateNotNull()][scriptblock]$ValidateScript = { param($arg) if ([String]::IsNullOrEmpty($arg)) { throw [ArgumentNullException]::new('text', 'Cannot be Null Or Empty') } }
+  hidden [ValidateNotNull()][scriptblock]$ValidateScript = { param($arg) if ($null -eq $arg) { throw [ArgumentNullException]::new('text', 'Cannot be Null') } }
 
   ConsoleWriter() : base() {
     $this.PsObject.Properties.Add([psscriptproperty]::new("UseLeadPreffix", { return ![string]::IsNullOrWhiteSpace($this.LeadPreffix) }))
@@ -179,7 +179,7 @@ class ConsoleWriter : System.IO.TextWriter {
   [string] write([string]$text, [string]$Preffix, [int]$Speed, [int]$Duration, [ConsoleColor]$color, [bool]$Animate, [bool]$AddPreffix, [scriptblock]$ValidateScript) {
     if ($null -ne $ValidateScript) {
       [void]$ValidateScript.Invoke($text)
-    } elseif ([string]::IsNullOrWhiteSpace($text)) {
+    } elseif ($null -eq $text) {
       return $text
     }
     [int]$length = $text.Length; $delay = 0
