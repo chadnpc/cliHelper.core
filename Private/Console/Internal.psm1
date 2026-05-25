@@ -143,6 +143,13 @@ class ConsoleWriter : System.IO.TextWriter {
     $this.PsObject.Properties.Add([PsNoteProperty]::new("UseTypingEffect", $false ))
   }
 
+  # WriteRaw: Writes text directly to stdout without any color/animation processing.
+  # This is the correct method for ANSI escape sequences emitted by AnsiWriter.
+  [void] WriteRaw([string]$text) {
+    if ($null -eq $text) { return }
+    [System.Console]::Write($text)
+  }
+
   [string] write([string]$text) {
     return $this.Write($text, 20, 1200)
   }
