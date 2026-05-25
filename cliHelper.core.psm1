@@ -8,7 +8,6 @@ using namespace System
 # use scripts\generate_sub_modules_list.ps1
 
 using module Private\Console\Ansi.psm1
-using module Private\Console\Ui.psm1
 using module Private\Console\Boxes.psm1
 using module Private\Console\Charts.psm1
 using module Private\Console\Colors.psm1
@@ -31,6 +30,7 @@ using module Private\Console\Table.psm1
 using module Private\Console\TableRenderer.psm1
 using module Private\Console\Tables.psm1
 using module Private\Console\Tree.psm1
+using module Private\Console\Ui.psm1
 using module Private\Console\Utilities.psm1
 using module Private\Console\Widgets.psm1
 using module Private\AntiVirus.psm1
