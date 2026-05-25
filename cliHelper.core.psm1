@@ -8,7 +8,7 @@ using namespace System
 # use scripts\generate_sub_modules_list.ps1
 
 using module Private\Console\Ansi.psm1
-using module Private\Console\AnsiConsole.psm1
+using module Private\Console\Ui.psm1
 using module Private\Console\Boxes.psm1
 using module Private\Console\Charts.psm1
 using module Private\Console\Colors.psm1

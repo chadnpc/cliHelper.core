@@ -11,7 +11,7 @@ using namespace System.Runtime.InteropServices
 using namespace System.Management.Automation
 
 using module .\Console\Ansi.psm1
-using module .\Console\AnsiConsole.psm1
+using module .\Console\Ui.psm1
 using module .\Console\Boxes.psm1
 using module .\Console\Charts.psm1
 using module .\Console\Colors.psm1
