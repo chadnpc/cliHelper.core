@@ -140,7 +140,7 @@ class ConsoleHelper {
     $progress.Start([Action[ProgressContext]] {
         param([ProgressContext]$ctx)
 
-        $task = $ctx.AddTask('Loading data', [ProgressTaskSettings]::new())
+        $task = $ctx.AddTask('[green]Loading data', [ProgressTaskSettings]::new())
         foreach ($step in 1..5) {
           Start-Sleep -Milliseconds 120
           $task.Increment(20)
