@@ -526,12 +526,12 @@ class JobRunnerOptions {
 .EXAMPLE
   $jobs = [BackgroundJob[]](
     @{
-        n = "calc~Primes"
+        n = "[yellow]calc~Primes[/]"
         s = { param($n) (1..$n | Where-Object { $_ -gt 1 -and (1..[Math]::Sqrt($_)) -notcontains $_ -or $_ -eq 2 }).Count }
         a = 1000
     },
     @{
-        n = "Fibonacci"
+        n = "[yellow]Fibonacci[/]"
         s = { param($n) $a, $b = 0, 1; 1..$n | ForEach-Object { $c = $a; $a = $b; $b = $c + $b; $a } }
         a = 20
     }
