@@ -29,31 +29,31 @@ Import-Module .\cliHelper.core.psd1 -Verbose -Force
 [ConsoleHelper]::DemoTextandMarkup()
 ```
 
-### 2) Panels, Rules, and Alignment. 
+### 2) Panels, Rules, and Alignment.
 
 ```powershell
 [ConsoleHelper]::DemoPanelsRulesandAlignment()
 ```
 
-### 3) Tables. 
+### 3) Tables.
 
 ```powershell
 [ConsoleHelper]::DemoTables()
 ```
 
-### 4) Rows, Columns, and Grid. 
+### 4) Rows, Columns, and Grid.
 
 ```powershell
 [ConsoleHelper]::DemoRowsColumnsandGrid()
 ```
 
-### 5) Tree Rendering.  
+### 5) Tree Rendering.
 
 ```powershell
 [ConsoleHelper]::DemoTreeRendering()
 ```
 
-### 6) Spinner Definitions. 
+### 6) Spinner Definitions.
 
 ```powershell
 $spinner = [SpinnerKnown]::Earth
@@ -62,7 +62,7 @@ $spinner = [SpinnerKnown]::Earth
 "Interval: $($spinner.Interval.TotalMilliseconds) ms"
 ```
 
-### 7) Progress. 
+### 7) Progress.
 
 ```powershell
 $console = [AnsiConsole]::Console
@@ -80,7 +80,7 @@ $progress.Start([Action[ProgressContext]]{
 })
 ```
 
-### 8) Status with Spinner. 
+### 8) Status with Spinner.
 
 ```powershell
 $writer = [AnsiConsole]::Console.Writer
@@ -97,7 +97,7 @@ $status.Start('Downloading metadata', [Action[StatusContext]]{
 })
 ```
 
-### 9) Prompts. 
+### 9) Prompts.
 These prompt classes require the user to manually run them in an interactive terminal because they use `Console.ReadKey()`.
 
 ```powershell
@@ -124,20 +124,20 @@ $multi.AddChoice('Scheduler', 'scheduler')
 # $components = $multi.Show($console);
 ```
 
-### 10) Charts and Calendar. 
+### 10) Charts and Calendar.
 
 ```powershell
 [ConsoleHelper]::DemoChartsandCalendar()
 ```
 
-### 11) Emoji Replacement. 
+### 11) Emoji Replacement.
 
 ```powershell
 [Emoji]::Replace('Deploy :rocket: status :white_check_mark:')
 # Deploy 🚀 status ✅
 ```
 
-### 12) FigletText Placeholder. 
+### 12) FigletText Placeholder.
 
 `FigletText` is still an incomplete implementation / feature-complete yet.
 
@@ -145,14 +145,10 @@ $multi.AddChoice('Scheduler', 'scheduler')
 [ConsoleHelper]::DemoFigletText()
 ```
 
-### 13) JSON Rendering. 
+### 13) JSON Rendering.
 
 ```powershell
-$json = '{"name":"Ada","count":3,"ok":true,"items":[null,2]}'
-$tokens = [JsonTokenizer]::Tokenize($json)
-$syntax = [JsonParser]::Parse($tokens)
-
-[AnsiConsole]::Console.Write([JsonText]::new($syntax))
+[ConsoleHelper]::DemoJSONRendering()
 ```
 
 Objects can also be rendered directly:
@@ -170,13 +166,7 @@ $data = [ordered]@{
 ### 14) Searchable ListPrompt. Interactive ✅
 
 ```powershell
-$prompt = [ListPrompt]::new('Pick a service')
-$prompt.AddItems([string[]]@('api', 'worker', 'scheduler', 'gateway'))
-# $service = $prompt.Show([AnsiConsole]::Console)
-
-# Non-interactive preview for tests and docs:
-$prompt.SearchFilter = 'work'
-$prompt.Preview()
+[ConsoleHelper]::DemoSearchableListPrompt()
 ```
 
 ## Compatibility Notes
