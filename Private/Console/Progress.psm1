@@ -542,13 +542,32 @@ class Progress {
   [void] Start([ProgressContext]$context, [Action[ProgressContext]]$action) {
     $display = [LiveDisplayRegion]::new($this.Writer)
     $session = [ProgressLiveSession]::new($this, $context, $display)
-    $thread = [ProgressRefreshThread]::new(([TimerCallback] $session.Tick), $this.RefreshRateMs)
+
+    # WHY: $session.Tick is a PowerShell class method; it needs the runspace to
+    # execute.  A System.Threading.Timer fires on a thread-pool thread which
+    # cannot acquire the runspace while $action.Invoke() is blocking it (e.g.
+    # Start-Sleep).  Solution: run the ACTION in a background [PowerShell]
+    # instance (its own dedicated runspace) so the MAIN thread stays free to
+    # drive the render loop — the same pattern used by Runner.psm1's
+    # mutex-protected UpdateProgressDisplay.
+    $bgPs = [System.Management.Automation.PowerShell]::Create()
+    [void]$bgPs.AddScript({
+      param([Action[ProgressContext]]$act, [ProgressContext]$ctx)
+      $act.Invoke($ctx)
+    }).AddArgument($action).AddArgument($context)
+
+    $asyncHandle = $bgPs.BeginInvoke()
     try {
-      $action.Invoke($context)
-      $session.Tick($null)
+      # Main-thread render loop — no runspace contention.
+      while (!$asyncHandle.IsCompleted) {
+        $session.Tick($null)
+        [System.Threading.Thread]::Sleep($this.RefreshRateMs)
+      }
+      $session.Tick($null)  # final render (100 %)
     } finally {
-      $thread.Dispose()
-      $session.Tick($null)
+      # Surface any exception thrown inside the action.
+      try { $bgPs.EndInvoke($asyncHandle) } catch { throw }
+      $bgPs.Dispose()
       $display.Complete($session.LastLines)
     }
   }
