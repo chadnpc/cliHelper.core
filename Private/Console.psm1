@@ -185,17 +185,4 @@ class ConsoleHelper {
     $results = $runnerType::Run("", $jobs, 2, "Modern")
     return $results
   }
-  static [void] DemoOneFailingJobWithCustomTitle() {
-    [ThreadRunner]::Run("doing a failing task in the background...", @{
-        n           = "[yellow]run fake db operations[/]"
-        s           = {
-          param($operationCount)
-          Start-Sleep -Milliseconds 4000
-          throw "idk wtf just happened!"
-        }
-        a           = 15
-        ThrowOnFail = $false
-      }
-    )
-  }
 }
