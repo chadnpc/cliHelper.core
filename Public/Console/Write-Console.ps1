@@ -131,9 +131,9 @@ function Write-Console {
     # $console = [AnsiConsole]::Console
     # $console.use_typingEffect($Animate.IsPresent)
     if (!$NoNewLine.IsPresent) {
-      $Animate ? $([AnsiConsole]::Console.Write($str); $host.UI.WriteLine()) : $Host.UI.WriteLine($str)
+      $Animate ? $([AnsiConsole]::Console.Write([text]$str); $host.UI.WriteLine()) : $Host.UI.WriteLine($str)
     } else {
-      $Animate ? $([AnsiConsole]::Console.Write($str)) : $Host.UI.Write($str)
+      $Animate ? $([AnsiConsole]::Console.Write([text]$str)) : $Host.UI.Write($str)
     }
   }
   end {

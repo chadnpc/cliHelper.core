@@ -105,7 +105,14 @@ class ConsoleHelper {
     [AnsiConsole]::Console.Write($tree)
   }
   static [void] DemoJSONRendering() {
-    $json = '{"name":"Ada","count":3,"ok":true,"items":[null,2]}'
+    $uri = [uri]'https://jsonplaceholder.typicode.com/todos/1'
+    $progressHelper = [type]"ProgressUtil"
+    $RequestParams = @{
+      Uri    = $uri.AbsoluteUri
+      Method = 'GET'
+    }
+    $result = $progressHelper::WaitJob("Making GET request to $($uri.Host)", { param($rp) Invoke-RestMethod @rp }, $RequestParams) | Receive-Job
+    $json = $result | ConvertTo-Json
     $tokens = [JsonTokenizer]::Tokenize($json)
     $syntax = [JsonParser]::Parse($tokens)
     [AnsiConsole]::Console.Write([JsonText]::new($syntax))
@@ -245,12 +252,5 @@ class ConsoleHelper {
   static [void] DemoCliArt() {
     $art = Create-CliArt "https://pastebin.com/raw/p29UR385" -Taglines "Build. Ship. Repeat."; $art.Replace("x.y.z", "0.3.2");
     $art.Write(15, $false, $true)
-    $progressHelper = [type]"ProgressUtil"
-    $RequestParams = @{
-      Uri    = 'https://jsonplaceholder.typicode.com/todos/1'
-      Method = 'GET'
-    }
-    $result = $progressHelper::WaitJob("Making a request", { param($rp) Start-Sleep -Seconds 2; Invoke-RestMethod @rp }, $RequestParams) | Receive-Job
-    Write-Output $result
   }
 }

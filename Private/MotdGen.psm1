@@ -1,6 +1,7 @@
 using namespace System.Collections.Generic
 
 using module .\Enums.psm1
+using module .\Console\Colors.psm1
 
 #region    console_art
 # .SYNOPSIS
@@ -40,7 +41,7 @@ class cliart {
   static hidden [cliart] _init_([string]$s, [string[]]$taglines, $o) {
     $from_url = $false; $use_verbose = (Get-Variable VerbosePreference -Scope global -ValueOnly) -eq 'Continue'
     $i = switch ($true) {
-      ([cryptobase]::IsValidUrl($s)) { $from_url = $true; $dlfile = $(Start-DownloadWithRetry -Uri $s -Message "downloading" -Verbose:$use_verbose -Caller '[cliart]'); Get-Item $dlfile; break }
+      ([cryptobase]::IsValidUrl($s)) { $from_url = $true; $dlfile = $(Start-DownloadWithRetry -Uri $s -Message "downloading" -Verbose:$use_verbose -caller '[cliart]'); Get-Item $dlfile; break }
       ([cryptobase]::IsBase64String($s)) { [System.Convert]::FromBase64String($s); break }
       ([cliart]::ResolveRelativeFilePath([ref]$s)) { (Get-Item $s); break }
       default {
@@ -79,12 +80,14 @@ class cliart {
   [void] Write([int]$SpaceBeforeTagline, [bool]$Nonewline, [bool]$Animate) {
     $this.Write('LimeGreen', $SpaceBeforeTagline, $Nonewline, [string]::Empty, $Animate)
   }
-  [void] Write([string]$asciicolor, [int]$SpaceBeforeTagline, [bool]$Nonewline, [string]$AdditionalText, [bool]$Animate) {
-    $this.Write($asciicolor, $SpaceBeforeTagline, $asciicolor, $Nonewline, $AdditionalText, $Animate)
+  [void] Write([string]$ArtRGBcolor, [int]$SpaceBeforeTagline, [bool]$Nonewline, [string]$AdditionalText, [bool]$Animate) {
+    $this.Write($ArtRGBcolor, $SpaceBeforeTagline, $ArtRGBcolor, $Nonewline, $AdditionalText, $Animate)
   }
-  [void] Write([string]$asciicolor, [int]$SpaceBeforeTagline, [string]$TaglineColor, [bool]$Nonewline, [string]$AdditionalText, [bool]$Animate) {
-    $this.GetString() | Write-Console -f $asciicolor; $last_line = '{0}{1}' -f $([string][char]32 * $SpaceBeforeTagline), $this.GetTagline()
-    if (![string]::IsNullOrWhiteSpace($last_line)) { $last_line | Write-Console -f $TaglineColor -NoNewLine:$Nonewline -Animate:$Animate }
+  [void] Write([string]$ArtRGBcolor, [int]$SpaceBeforeTagline, [string]$TaglineRGBbcolor, [bool]$Nonewline, [string]$AdditionalText, [bool]$Animate) {
+    [ValidateScript( { return [bool][RGB]$_ })][string]$ArtRGBcolor = $ArtRGBcolor
+    [ValidateScript( { return [bool][RGB]$_ })][string]$TaglineRGBbcolor = $TaglineRGBbcolor
+    $this.GetString() | Write-Console -f $ArtRGBcolor; $last_line = '{0}{1}' -f $([string][char]32 * $SpaceBeforeTagline), $this.GetTagline()
+    if (![string]::IsNullOrWhiteSpace($last_line)) { $last_line | Write-Console -f $TaglineRGBbcolor -NoNewLine:$Nonewline -Animate:$Animate }
     if (![string]::IsNullOrWhiteSpace($AdditionalText)) { $AdditionalText | Write-Console -f LightCyan -Animate:$Animate }
   }
   [cliart] Replace([string]$oldValue, [string]$newValue) {
