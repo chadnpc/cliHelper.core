@@ -169,7 +169,7 @@ class ConsoleHelper {
     return $service
   }
   static [object] DemoThreadRunnerAnsiOutputSupport() {
-    $jobs = [BackgroundJob[]](
+    $jobs = [object[]](
       @{
         n = "[yellow]calc~Primes[/]"
         s = { param($n) (1..$n | Where-Object { $_ -gt 1 -and (1..[Math]::Sqrt($_)) -notcontains $_ -or $_ -eq 2 }).Count }
@@ -181,7 +181,8 @@ class ConsoleHelper {
         a = 20
       }
     )
-    $results = [ThreadRunner]::Run("", $jobs, 2, "Ansi")
+    $runnerType = [type]"ThreadRunner"
+    $results = $runnerType::Run("", $jobs, 2, "Modern")
     return $results
   }
 }
