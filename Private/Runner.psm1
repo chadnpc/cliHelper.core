@@ -320,7 +320,7 @@ class JobRunnerOptions {
         if ($barEmpty -gt 0) { $markup += "[$($this.Theme.BorderColor)]$escEmptyStr[/]" }
         $markup += "[$($this.Theme.BorderColor)]$escBarEnd[/]"
       } else {
-        $markup += "[$($this.Theme.BorderColor)]$escBarStart$escEmptyStr$escBarEnd[/]"
+        $markup += "[$($this.Theme.BorderColor)]{0}{1}{2}[/]" -f $escBarStart, $escEmptyStr, $escBarEnd
       }
 
       $markup += " [$($this.Theme.TextColor)]$progressStr[/] "
