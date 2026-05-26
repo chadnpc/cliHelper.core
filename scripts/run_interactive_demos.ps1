@@ -1,4 +1,5 @@
 ﻿Import-Module .\cliHelper.core.psd1 -Verbose:$false -Force
+# [ConsoleHelper].GetMethods().Where({ $_.IsStatic -and $_.Name.StartsWith("Demo") }).Name
 $failed = $false
 try {
   [ConsoleHelper]::DemoProgress()
