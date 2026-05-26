@@ -189,63 +189,63 @@ class ProgressTheme {
   }
   static hidden [ProgressTheme] GetModern() {
     $t = [ProgressTheme]@{}
-    $t.BarColor = "Cyan"; $t.CompletedColor = "Green"; $t.RunningColor = "Yellow"
-    $t.FailedColor = "Red"; $t.PendingColor = "DarkGray"; $t.TextColor = "White"
-    $t.HeaderColor = "Cyan"; $t.BorderColor = "DarkGray"
+    $t.BarColor = "Aqua"; $t.CompletedColor = "Lime"; $t.RunningColor = "Yellow"
+    $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
+    $t.HeaderColor = "Aqua"; $t.BorderColor = "Grey"
     $t.BarFilled = "█"; $t.BarEmpty = "░"; $t.BarStart = ""; $t.BarEnd = ""
     $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.modern
     return $t
   }
   static hidden [ProgressTheme] GetScifi() {
     $t = [ProgressTheme]@{}
-    $t.BarColor = "Cyan"; $t.CompletedColor = "Green"; $t.RunningColor = "Yellow"
-    $t.FailedColor = "Red"; $t.PendingColor = "DarkGray"; $t.TextColor = "White"
-    $t.HeaderColor = "Cyan"; $t.BorderColor = "DarkGray"
+    $t.BarColor = "Aqua"; $t.CompletedColor = "Lime"; $t.RunningColor = "Yellow"
+    $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
+    $t.HeaderColor = "Aqua"; $t.BorderColor = "Grey"
     $t.BarFilled = "▰"; $t.BarEmpty = "▱"; $t.BarStart = ""; $t.BarEnd = ""
     $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.scifi
     return $t
   }
   static hidden [ProgressTheme] GetLunar() {
     $t = [ProgressTheme]@{}
-    $t.BarColor = "Cyan"; $t.CompletedColor = "Green"; $t.RunningColor = "Yellow"
-    $t.FailedColor = "Red"; $t.PendingColor = "DarkGray"; $t.TextColor = "White"
-    $t.HeaderColor = "Cyan"; $t.BorderColor = "DarkGray"
+    $t.BarColor = "Aqua"; $t.CompletedColor = "Lime"; $t.RunningColor = "Yellow"
+    $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
+    $t.HeaderColor = "Aqua"; $t.BorderColor = "Grey"
     $t.BarFilled = "▩"; $t.BarEmpty = "▢"; $t.BarStart = ""; $t.BarEnd = ""
     $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.lunar
     return $t
   }
   static hidden [ProgressTheme] GetOtto() {
     $t = [ProgressTheme]@{}
-    $t.BarColor = "Cyan"; $t.CompletedColor = "Green"; $t.RunningColor = "Yellow"
-    $t.FailedColor = "Red"; $t.PendingColor = "DarkGray"; $t.TextColor = "White"
-    $t.HeaderColor = "Cyan"; $t.BorderColor = "DarkGray"
+    $t.BarColor = "Aqua"; $t.CompletedColor = "Lime"; $t.RunningColor = "Yellow"
+    $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
+    $t.HeaderColor = "Aqua"; $t.BorderColor = "Grey"
     $t.BarFilled = "¦"; $t.BarEmpty = " "; $t.BarStart = ""; $t.BarEnd = ""
     $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.otto
     return $t
   }
   static hidden [ProgressTheme] GetGlyph() {
     $t = [ProgressTheme]@{}
-    $t.BarColor = "Cyan"; $t.CompletedColor = "Green"; $t.RunningColor = "Yellow"
-    $t.FailedColor = "Red"; $t.PendingColor = "DarkGray"; $t.TextColor = "White"
-    $t.HeaderColor = "Cyan"; $t.BorderColor = "DarkGray"
+    $t.BarColor = "Aqua"; $t.CompletedColor = "Lime"; $t.RunningColor = "Yellow"
+    $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
+    $t.HeaderColor = "Aqua"; $t.BorderColor = "Grey"
     $t.BarFilled = "⣿"; $t.BarEmpty = " "; $t.BarStart = ""; $t.BarEnd = ""
     $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.glyph
     return $t
   }
   static hidden [ProgressTheme] GetClassic() {
     $t = [ProgressTheme]@{}
-    $t.BarColor = "Cyan"; $t.CompletedColor = "Green"; $t.RunningColor = "Yellow"
-    $t.FailedColor = "Red"; $t.PendingColor = "DarkGray"; $t.TextColor = "White"
-    $t.HeaderColor = "Yellow"; $t.BorderColor = "DarkCyan"
+    $t.BarColor = "Aqua"; $t.CompletedColor = "Lime"; $t.RunningColor = "Yellow"
+    $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
+    $t.HeaderColor = "Yellow"; $t.BorderColor = "Teal"
     $t.BarFilled = "■"; $t.BarEmpty = " "; $t.BarStart = "["; $t.BarEnd = "]"
     $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.classic
     return $t
   }
   static hidden [ProgressTheme] GetVintage() {
     $t = [ProgressTheme]@{}
-    $t.BarColor = "Cyan"; $t.CompletedColor = "Green"; $t.RunningColor = "Yellow"
-    $t.FailedColor = "Red"; $t.PendingColor = "DarkGray"; $t.TextColor = "White"
-    $t.HeaderColor = "Cyan"; $t.BorderColor = "DarkGray"
+    $t.BarColor = "Aqua"; $t.CompletedColor = "Lime"; $t.RunningColor = "Yellow"
+    $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
+    $t.HeaderColor = "Aqua"; $t.BorderColor = "Grey"
     $t.BarFilled = "❚"; $t.BarEmpty = " "; $t.BarStart = ""; $t.BarEnd = ""
     $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.vintage
     return $t
