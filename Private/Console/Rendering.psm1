@@ -472,7 +472,7 @@ class MarkupStyleParser {
     }
 
     if ($styleStack.Count -gt 0) {
-      throw "Unbalanced markup stack. Did you forget to close a tag?"
+      Write-Warning "[MarkupStyleParser]::ParseMarkup - Failed! Unbalanced markup stack. Did you forget to close a tag?"
     }
 
     return $result
