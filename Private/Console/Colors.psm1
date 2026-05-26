@@ -70,6 +70,20 @@ class Color {
     $this.IsDefault = $isDefault
   }
 
+  Color([string]$colorOrHex) {
+    if ([string]::IsNullOrWhiteSpace($colorOrHex)) {
+      $this.IsDefault = $true
+      return
+    }
+    $c = if ($colorOrHex.StartsWith("#")) { [Color]::FromHex($colorOrHex) } else { [Color]::FromName($colorOrHex) }
+    if ($null -eq $c) { throw "Unknown color: '$colorOrHex'" }
+    $this.R = $c.R
+    $this.G = $c.G
+    $this.B = $c.B
+    $this.Number = $c.Number
+    $this.IsDefault = $c.IsDefault
+  }
+
   [string] ToHex() {
     return "{0:X2}{1:X2}{2:X2}" -f $this.R, $this.G, $this.B
   }
