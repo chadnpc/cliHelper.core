@@ -176,7 +176,7 @@ class ConsoleHelper {
         a = 1000
       },
       @{
-        n = "[green]Fibonacci[/]"
+        n = "[yellow]Fibonacci[/]"
         s = { param($n) $a, $b = 0, 1; 1..$n | ForEach-Object { $c = $a; $a = $b; $b = $c + $b; $a } }
         a = 20
       }
@@ -184,5 +184,18 @@ class ConsoleHelper {
     $runnerType = [type]"ThreadRunner"
     $results = $runnerType::Run("", $jobs, 2, "Modern")
     return $results
+  }
+  static [void] DemoOneFailingJobWithCustomTitle() {
+    [ThreadRunner]::Run("doing a failing task in the background...", @{
+        n           = "[yellow]run fake db operations[/]"
+        s           = {
+          param($operationCount)
+          Start-Sleep -Milliseconds 4000
+          throw "idk wtf just happened!"
+        }
+        a           = 15
+        ThrowOnFail = $false
+      }
+    )
   }
 }
