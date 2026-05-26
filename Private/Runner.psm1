@@ -626,13 +626,13 @@ class ThreadRunner {
     $act.Start()
     [ThreadRunner]::ActivityLog.Add([guid]::new($act.TraceId), $act)
 
-    Write-Host "  $(' ' * $opts.LeftPadding)" -NoNewline
-    Write-Host $opts.JobsTitle -ForegroundColor $opts.Theme.HeaderColor
-    Write-Host "$(' ' * $opts.LeftPadding) ID    NAME                PROGRESS                                STATUS         TIME" -ForegroundColor DarkGray
-    Write-Host ""
+    $headerColorM = $opts.Theme.HeaderColor.ToMarkup()
+    [AnsiConsole]::MarkupLine("  $(' ' * $opts.LeftPadding)[$headerColorM]$($opts.JobsTitle)[/]")
+    [AnsiConsole]::MarkupLine("[grey]$(' ' * $opts.LeftPadding) ID    NAME                PROGRESS                                STATUS         TIME[/]")
+    [AnsiConsole]::WriteLine("")
 
     $startY = [Console]::CursorTop
-    for ($i = 0; $i -lt $Jobs.Count; $i++) { Write-Host "" }
+    for ($i = 0; $i -lt $Jobs.Count; $i++) { [AnsiConsole]::WriteLine("") }
     $opts.StartPosition = [ConsoleCoordinate]::new($opts.LeftPadding, $startY)
 
     foreach ($job in $Jobs) { $opts.UpdateProgressDisplay($job) }
