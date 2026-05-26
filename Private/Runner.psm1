@@ -618,8 +618,8 @@ class ThreadRunner {
     return [ThreadRunner]::WaitJobs($this.Jobs, $this.Options)
   }
   static hidden [JobResult[]] WaitJobs([List[BackgroundJob]]$Jobs, [JobRunnerOptions]$opts) {
-    $originalCursorVisible = [Console]::CursorVisible
-    [Console]::CursorVisible = $false
+    $originalCursorVisible = $true
+    try { $originalCursorVisible = [Console]::CursorVisible; [Console]::CursorVisible = $false } catch {}
 
     # Activity Logging
     $act = [Activity]::new($opts.JobsTitle)
@@ -718,8 +718,7 @@ class ThreadRunner {
     $endY = $opts.StartPosition.Y + $Jobs.Count
     if ($endY -lt 0) { $endY = 0 }
     if ($endY -ge [Console]::BufferHeight) { $endY = [Console]::BufferHeight - 1 }
-    [Console]::SetCursorPosition(0, $endY)
-    [Console]::CursorVisible = $originalCursorVisible
+    try { [Console]::SetCursorPosition(0, $endY); [Console]::CursorVisible = $originalCursorVisible } catch {}
 
     return $results.ToArray()
   }
