@@ -33,8 +33,10 @@ class AnsiConsoleFacade : IAnsiConsole {
   }
 
   [AnsiWriter] get_Writer() { return $this._writer }
-
-
+  [void] use_typingEffect([bool]$condition) {
+    $this._writer._output.UseTypingEffect = $condition
+    $this._writer._output.WriteRaw = !$condition
+  }
   [void] Clear() {
     $this.Clear($true)
   }

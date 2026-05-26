@@ -128,6 +128,8 @@ function Write-Console {
       }
     }
     $str = $f + $b + $Text + $resetAttributes
+    # $console = [AnsiConsole]::Console
+    # $console.use_typingEffect($Animate.IsPresent)
     if (!$NoNewLine.IsPresent) {
       $Animate ? $([AnsiConsole]::Console.Write($str); $host.UI.WriteLine()) : $Host.UI.WriteLine($str)
     } else {

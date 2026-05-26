@@ -37,7 +37,7 @@ using module .\Console\Tree.psm1
 using module .\Console\Utilities.psm1
 using module .\Console\Widgets.psm1
 
-# todo : a console-convenience helper class to get capabilities
+# todo : a console-convenience helper class to demo the features
 class ConsoleHelper {
   static [void] DemoMarkup() {
     $console = [AnsiConsole]::Console
@@ -208,9 +208,9 @@ class ConsoleHelper {
 
     $status.Start('Downloading metadata', [Action[StatusContext]] {
         param([StatusContext]$ctx)
-        Start-Sleep -Milliseconds 150
+        Start-Sleep -Milliseconds 450
         $ctx.Update('Finishing download')
-        Start-Sleep -Milliseconds 150
+        Start-Sleep -Milliseconds 250
       }
     )
   }
