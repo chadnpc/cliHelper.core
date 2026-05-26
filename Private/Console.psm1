@@ -208,7 +208,6 @@ class ConsoleHelper {
 
     $status.Start('Downloading metadata', [Action[StatusContext]] {
         param([StatusContext]$ctx)
-
         Start-Sleep -Milliseconds 150
         $ctx.Update('Finishing download')
         Start-Sleep -Milliseconds 150
@@ -221,7 +220,7 @@ class ConsoleHelper {
     $envName = $textPrompt.Show([AnsiConsole]::Console)
     return $envName
   }
-  static [bool] ConfirmPrompt() {
+  static [bool] DemoConfirmPrompt() {
     $confirm = [ConfirmationPrompt]::new('Deploy now?')
     $confirm.DefaultValue = $false
     $shouldDeploy = $confirm.Show([AnsiConsole]::Console)
@@ -246,12 +245,12 @@ class ConsoleHelper {
   static [void] DemoCliArt() {
     $art = Create-CliArt "https://pastebin.com/raw/p29UR385" -Taglines "Build. Ship. Repeat."; $art.Replace("x.y.z", "0.3.2");
     $art.Write(15, $false, $true)
-
+    $progressBar = [type]"ProgressUtil"
     $RequestParams = @{
       Uri    = 'https://jsonplaceholder.typicode.com/todos/1'
       Method = 'GET'
     }
-    $result = [ProgressUtil]::WaitJob("Making a request", { param($rp) Start-Sleep -Seconds 2; Invoke-RestMethod @rp }, $RequestParams) | Receive-Job
+    $result = $progressBar::WaitJob("Making a request", { param($rp) Start-Sleep -Seconds 2; Invoke-RestMethod @rp }, $RequestParams) | Receive-Job
     Write-Output $result
   }
 }
