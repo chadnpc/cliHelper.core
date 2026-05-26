@@ -104,6 +104,12 @@ class ConsoleHelper {
     [void]$tree.Root.AddNode('Branch 2')
     [AnsiConsole]::Console.Write($tree)
   }
+  static [void] DemoJSONRendering() {
+    $json = '{"name":"Ada","count":3,"ok":true,"items":[null,2]}'
+    $tokens = [JsonTokenizer]::Tokenize($json)
+    $syntax = [JsonParser]::Parse($tokens)
+    [AnsiConsole]::Console.Write([JsonText]::new($syntax))
+  }
   static [void] DemoChartsandCalendar() {
     $console = [AnsiConsole]::Console
 
@@ -151,5 +157,15 @@ class ConsoleHelper {
   static [void] DemoFigletText() {
     $fig = [FigletText]::new([FigletFont]::DEFAULT_3D, 'ansiconsole')
     [AnsiConsole]::Console.Write($fig)
+  }
+  static [object] DemoSearchableListPrompt() {
+    $prompt = [ListPrompt]::new('Pick a service')
+    $prompt.AddItems([string[]]@('api', 'worker', 'scheduler', 'gateway'))
+    $service = $prompt.Show([AnsiConsole]::Console)
+
+    # Non-interactive preview for tests and docs:
+    # $prompt.SearchFilter = 'work'
+    # $prompt.Preview()
+    return $service
   }
 }
