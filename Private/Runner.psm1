@@ -308,13 +308,22 @@ class JobRunnerOptions {
       $toMarkupColor = {
         param([ConsoleColor]$c)
         switch ($c) {
-          ([ConsoleColor]::DarkGray) { "Grey" }
-          ([ConsoleColor]::DarkCyan) { "Teal" }
+          ([ConsoleColor]::Black) { "Black" }
           ([ConsoleColor]::DarkBlue) { "Navy" }
-          ([ConsoleColor]::DarkGreen) { "Olive" }
-          ([ConsoleColor]::DarkMagenta) { "Purple" }
+          ([ConsoleColor]::DarkGreen) { "Green" }
+          ([ConsoleColor]::DarkCyan) { "Teal" }
           ([ConsoleColor]::DarkRed) { "Maroon" }
+          ([ConsoleColor]::DarkMagenta) { "Purple" }
+          ([ConsoleColor]::DarkYellow) { "Olive" }
           ([ConsoleColor]::Gray) { "Silver" }
+          ([ConsoleColor]::DarkGray) { "Grey" }
+          ([ConsoleColor]::Blue) { "Blue" }
+          ([ConsoleColor]::Green) { "Lime" }
+          ([ConsoleColor]::Cyan) { "Aqua" }
+          ([ConsoleColor]::Red) { "Red" }
+          ([ConsoleColor]::Magenta) { "Fuchsia" }
+          ([ConsoleColor]::Yellow) { "Yellow" }
+          ([ConsoleColor]::White) { "White" }
           default { $c.ToString() }
         }
       }
