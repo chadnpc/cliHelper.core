@@ -305,6 +305,25 @@ class JobRunnerOptions {
         default { $this.Theme.PendingColor }
       }
 
+      $toMarkupColor = {
+        param([ConsoleColor]$c)
+        switch ($c) {
+          ([ConsoleColor]::DarkGray) { "Grey" }
+          ([ConsoleColor]::DarkCyan) { "Teal" }
+          ([ConsoleColor]::DarkBlue) { "Navy" }
+          ([ConsoleColor]::DarkGreen) { "Olive" }
+          ([ConsoleColor]::DarkMagenta) { "Purple" }
+          ([ConsoleColor]::DarkRed) { "Maroon" }
+          ([ConsoleColor]::Gray) { "Silver" }
+          default { $c.ToString() }
+        }
+      }
+
+      $borderColorM = & $toMarkupColor $this.Theme.BorderColor
+      $barColorM = & $toMarkupColor $this.Theme.BarColor
+      $textColorM = & $toMarkupColor $this.Theme.TextColor
+      $statusColorM = & $toMarkupColor $statusColor
+
       $markup = "`r$(' ' * $this.LeftPadding)"
       $markup += "[grey][[$indexStr]][/] "
       $markup += "$nameStr "
@@ -315,16 +334,16 @@ class JobRunnerOptions {
       $escEmptyStr = [AnsiMarkup]::Escape($emptyStr)
 
       if ($barFilled -gt 0) {
-        $markup += "[$($this.Theme.BorderColor)]$escBarStart[/]"
-        $markup += "[$($this.Theme.BarColor)]$escFilledStr[/]"
-        if ($barEmpty -gt 0) { $markup += "[$($this.Theme.BorderColor)]$escEmptyStr[/]" }
-        $markup += "[$($this.Theme.BorderColor)]$escBarEnd[/]"
+        $markup += "[$borderColorM]$escBarStart[/]"
+        $markup += "[$barColorM]$escFilledStr[/]"
+        if ($barEmpty -gt 0) { $markup += "[$borderColorM]$escEmptyStr[/]" }
+        $markup += "[$borderColorM]$escBarEnd[/]"
       } else {
-        $markup += "[$($this.Theme.BorderColor)]{0}{1}{2}[/]" -f $escBarStart, $escEmptyStr, $escBarEnd
+        $markup += "[$borderColorM]{0}{1}{2}[/]" -f $escBarStart, $escEmptyStr, $escBarEnd
       }
 
-      $markup += " [$($this.Theme.TextColor)]$progressStr[/] "
-      $markup += "[$statusColor]$statusStr[/] "
+      $markup += " [$textColorM]$progressStr[/] "
+      $markup += "[$statusColorM]$statusStr[/] "
       $markup += "[grey]$($Job.ElapsedTime)[/]      "
 
       [AnsiConsole]::Markup($markup)
