@@ -104,7 +104,7 @@ Describe "Feature tests: Console" {
 
       $text.GetType().Name | Should Be 'Text'
       ($null -ne $console.Profile) | Should Be $true
-      ($null -ne $console.get_Writer()) | Should Be $true
+      ($null -ne $console.GetWriter()) | Should Be $true
     }
 
     It "Renders Markup to console" {
@@ -122,7 +122,7 @@ Describe "Feature tests: Console" {
 
       ($null -ne $console) | Should Be $true
       ($null -ne $console.Profile) | Should Be $true
-      ($null -ne $console.get_Writer()) | Should Be $true
+      ($null -ne $console.GetWriter()) | Should Be $true
     }
   }
 

@@ -233,12 +233,15 @@ class ConsoleWriter : System.IO.TextWriter {
   static [void] ResetColor() {
     [System.Console]::ResetColor()
   }
+  [void] WriteLine() {
+    $this.WriteRaw ? [System.Console]::WriteLine() : (Get-Host).UI.WriteLine()
+  }
   [void] WriteLine([string]$text) {
     [void]$this.Write($text)
-    [System.Console]::WriteLine()
+    $this.WriteLine()
   }
   [void] WriteLine([string]$text, [ConsoleColor]$color) {
     [void]$this.Write($text, $color)
-    [System.Console]::WriteLine()
+    $this.WriteLine()
   }
 }

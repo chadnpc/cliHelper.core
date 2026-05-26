@@ -623,7 +623,7 @@ class IAnsiConsole {
   [IAnsiConsoleCursor]$Cursor
   [IAnsiConsoleInput]$Input
   [IExclusivityMode]$ExclusivityMode
-  [object] get_Writer() { return $null }
+  [object] GetWriter() { return $null }
   [void] Clear() { $this.Clear($true) }
   [void] Clear([bool]$_Home) {}
   [void] Write([IRenderable]$renderable) {

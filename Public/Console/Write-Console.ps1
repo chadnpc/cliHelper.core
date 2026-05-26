@@ -128,12 +128,8 @@ function Write-Console {
       }
     }
     $str = $f + $b + $Text + $resetAttributes
-    $console = [AnsiConsole]::Console
-    if (!$NoNewLine.IsPresent) {
-      $console.Write($str, $Animate); $host.UI.WriteLine()
-    } else {
-      $console.Write($str, $Animate)
-    }
+    $console = [AnsiConsole]::Console; $usetypeAnim = $Animate.IsPresent
+    $NoNewLine.IsPresent ? $console.Write($str, $usetypeAnim) : $console.WriteLine($str, $usetypeAnim)
   }
   end {
     $InformationPreference = $IAP

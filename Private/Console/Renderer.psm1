@@ -10,7 +10,7 @@ class ConsoleRenderer {
   static [void] Render([IAnsiConsole]$console, [IRenderable]$renderable) {
     if ($null -eq $renderable) { return }
 
-    $writer = [AnsiWriter]($console.get_Writer())
+    $writer = [AnsiWriter]($console.GetWriter())
     if ($null -eq $writer) {
       Write-Debug "Console does not have ANSI output writer."
       return

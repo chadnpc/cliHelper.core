@@ -285,7 +285,7 @@ class ConsoleResolver {
     }
 
     if ($consoleOrWriter -is [IAnsiConsole]) {
-      $writer = $consoleOrWriter.get_Writer()
+      $writer = $consoleOrWriter.GetWriter()
       if ($writer -is [AnsiWriter]) {
         return [AnsiWriter]$writer
       }
