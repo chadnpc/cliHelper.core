@@ -168,7 +168,7 @@ class ConsoleHelper {
     # $prompt.Preview()
     return $service
   }
-  static [object] DemoThreadRunnerAnsiOutputSupport() {
+  static [object] DemoAnsiInThreadrunner() {
     $jobs = [object[]](
       @{
         n = "[yellow]calc~Primes[/]"
@@ -184,5 +184,74 @@ class ConsoleHelper {
     $runnerType = [type]"ThreadRunner"
     $results = $runnerType::Run("", $jobs, 2, "Modern")
     return $results
+  }
+  static [object] DemoFailingTaskInThreadrunner() {
+    $runnerType = [type]"ThreadRunner"
+    $results = $runnerType::Run("doing a failing task in the background...", @{
+        n           = "[yellow]run fake db operations[/]"
+        s           = {
+          param($operationCount)
+          Start-Sleep -Milliseconds 4000
+          throw "idk wtf just happened!"
+        }
+        a           = 15
+        ThrowOnFail = $false
+      }
+    )
+    return $results
+  }
+  static [void] DemoStatus() {
+    $writer = [AnsiConsole]::Console.Writer
+    $status = [Status]::new($writer)
+    $status.Spinner = [SpinnerKnown]::Dots
+    $status.RefreshRateMs = 80
+
+    $status.Start('Downloading metadata', [Action[StatusContext]] {
+        param([StatusContext]$ctx)
+
+        Start-Sleep -Milliseconds 150
+        $ctx.Update('Finishing download')
+        Start-Sleep -Milliseconds 150
+      }
+    )
+  }
+  static [string] DemoTextPrompt() {
+    $textPrompt = [TextPrompt]::new([string], 'Environment')
+    $textPrompt.DefaultValue = 'dev'
+    $envName = $textPrompt.Show([AnsiConsole]::Console)
+    return $envName
+  }
+  static [bool] ConfirmPrompt() {
+    $confirm = [ConfirmationPrompt]::new('Deploy now?')
+    $confirm.DefaultValue = $false
+    $shouldDeploy = $confirm.Show([AnsiConsole]::Console)
+    return $shouldDeploy
+  }
+  static [object] DemoSelectionPrompt() {
+    $selection = [SelectionPrompt]::new('Pick a region')
+    $selection.AddChoice('US East', 'us-east-1')
+    $selection.AddChoice('EU West', 'eu-west-1')
+    $selection.AddChoice('AP South', 'ap-south-1')
+    $region = $selection.Show([AnsiConsole]::Console)
+    return $region
+  }
+  static [object] DemoMultiSelectionPrompt() {
+    $multi = [MultiSelectionPrompt]::new('Select components')
+    $multi.AddChoice('API', 'api')
+    $multi.AddChoice('Worker', 'worker')
+    $multi.AddChoice('Scheduler', 'scheduler')
+    $components = $multi.Show([AnsiConsole]::Console);
+    return $components
+  }
+  static [void] DemoCliArt() {
+    $art = Create-CliArt "https://pastebin.com/raw/p29UR385" -Taglines "Build. Ship. Repeat."; $art.Replace("x.y.z", "0.3.2");
+    $art.Write(15, $false, $true)
+
+    $RequestParams = @{
+      Uri    = 'https://jsonplaceholder.typicode.com/todos/1'
+      Method = 'GET'
+    }
+    $result = [ProgressUtil]::WaitJob("Making a request", { param($rp) Start-Sleep -Seconds 2; Invoke-RestMethod @rp }, $RequestParams) | Receive-Job
+    Write-Output $result
   }
 }

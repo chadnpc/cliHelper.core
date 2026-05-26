@@ -21,26 +21,30 @@
   </p>
 </div>
 
+## Features
+- Core rendering pipeline (ANSI codes, colors, styles, decorations)
+- Text widgets (Text, Markup, Paragraph, Align, Panel, Box, Rule)
+- Tables with 6+ border styles
+- Basic Charts (BarChart, BreakdownChart)
+- Tree and Grid layouts
+- Progress bars, live updates, and Status indicators
+- Interactive prompts (TextPrompt, ConfirmationPrompt, SelectionPrompt, MultiSelectionPrompt)
+- JSON tokenization, parsing, and syntax-highlighted rendering
+- Searchable ListPrompt
+- Full color system (256 + RGB support)
+- and many more!
+
 <h2><b>Usage</b></h2>
 
 ```PowerShell
 Install-Module cliHelper.core
 ```
 
-then
+then run demos
 
 ```PowerShell
 Import-Module cliHelper.core
-
-$art = Create-CliArt "https://pastebin.com/raw/p29UR385" -Taglines "Build. Ship. Repeat."; $art.Replace("x.y.z", "0.3.2");
-$art.Write(15, $false, $true)
-
-$RequestParams = @{
-  Uri    = 'https://jsonplaceholder.typicode.com/todos/1'
-  Method = 'GET'
-}
-$result = [ProgressUtil]::WaitJob("Making a request", { Param($rp) Start-Sleep -Seconds 2; Invoke-RestMethod @rp }, $RequestParams) | Receive-Job
-echo $result
+.\scripts\run_demo.ps1 -Verbose:$false
 ```
 
 <!--

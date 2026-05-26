@@ -65,63 +65,27 @@ $spinner = [SpinnerKnown]::Earth
 ### 7) Progress.
 
 ```powershell
-$console = [AnsiConsole]::Console
-$progress = [Progress]::new($console)
-$progress.RefreshRateMs = 80
-
-$progress.Start([Action[ProgressContext]]{
-  param([ProgressContext]$ctx)
-
-  $task = $ctx.AddTask('Loading data', [ProgressTaskSettings]::new())
-  foreach ($step in 1..5) {
-    Start-Sleep -Milliseconds 120
-    $task.Increment(20)
-  }
-})
+[ConsoleHelper]::DemoProgress()
 ```
 
 ### 8) Status with Spinner.
 
 ```powershell
-$writer = [AnsiConsole]::Console.Writer
-$status = [Status]::new($writer)
-$status.Spinner = [SpinnerKnown]::Dots
-$status.RefreshRateMs = 80
-
-$status.Start('Downloading metadata', [Action[StatusContext]]{
-  param([StatusContext]$ctx)
-
-  Start-Sleep -Milliseconds 150
-  $ctx.Update('Finishing download')
-  Start-Sleep -Milliseconds 150
-})
+[ConsoleHelper]::DemoStatus()
 ```
 
 ### 9) Prompts.
 These prompt classes require the user to manually run them in an interactive terminal because they use `Console.ReadKey()`.
 
 ```powershell
-$console = [AnsiConsole]::Console
 
-$textPrompt = [TextPrompt]::new([string], 'Environment')
-$textPrompt.DefaultValue = 'dev'
-# $envName = $textPrompt.Show($console);
+[ConsoleHelper]::DemoTextPrompt()
 
-$confirm = [ConfirmationPrompt]::new('Deploy now?')
-$confirm.DefaultValue = $false
-# $shouldDeploy = $confirm.Show($console);
+[ConsoleHelper]::DemoConfirmPrompt()
 
-$selection = [SelectionPrompt]::new('Pick a region')
-$selection.AddChoice('US East', 'us-east-1')
-$selection.AddChoice('EU West', 'eu-west-1')
-$selection.AddChoice('AP South', 'ap-south-1')
-# $region = $selection.Show($console);
+[ConsoleHelper]::DemoSelectionPrompt()
 
-$multi = [MultiSelectionPrompt]::new('Select components')
-$multi.AddChoice('API', 'api')
-$multi.AddChoice('Worker', 'worker')
-$multi.AddChoice('Scheduler', 'scheduler')
-# $components = $multi.Show($console);
+[ConsoleHelper]::DemoMultiSelectionPrompt()
 ```
 
 ### 10) Charts and Calendar.
