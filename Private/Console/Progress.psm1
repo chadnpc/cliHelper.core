@@ -231,9 +231,11 @@ class LiveDisplayRegion : IDisposable {
         if ($index -lt $lines.Length) {
           $this._writer.Write($lines[$index], [Style]::Plain)
         }
-        if ($index -lt $targetCount - 1) {
-          $this._writer.WriteLine()
-        }
+        # Always newline after each line so the cursor sits BELOW the progress
+        # region. This ensures \e[{n}F on the next tick moves back exactly to
+        # the start of the progress area and not one line further up into any
+        # prior Write-Host output.
+        $this._writer.WriteLine()
       }
 
       $this._lineCount = $targetCount
@@ -245,9 +247,8 @@ class LiveDisplayRegion : IDisposable {
   [void] Complete([string[]]$lines) {
     $this.Render($lines)
     $this.Dispose()
-    if ($lines.Length -gt 0) {
-      $this._writer.WriteLine()
-    }
+    # No extra WriteLine() here: Render() now always terminates every line
+    # with a newline, so the cursor is already on a fresh line after Render().
   }
 
   [void] Dispose() {
@@ -539,30 +540,16 @@ class Progress {
   }
 
   [void] Start([ProgressContext]$context, [Action[ProgressContext]]$action) {
-    # During progress rendering, route output through the PowerShell Host UI
-    # (which strips ANSI escape sequences) instead of raw stdout.
-    # This prevents cursor-movement sequences (e.g. \e[{n}F) from scrolling
-    # back over any Write-Host lines that were printed before the progress bar.
-    $prevWriteRaw = $this.Writer._output.WriteRaw
-    $prevAnsi     = $this.Writer.Capabilities.Ansi
-    $this.Writer._output.WriteRaw  = $false
-    $this.Writer.Capabilities.Ansi = $false
+    $display = [LiveDisplayRegion]::new($this.Writer)
+    $session = [ProgressLiveSession]::new($this, $context, $display)
+    $thread = [ProgressRefreshThread]::new(([TimerCallback] $session.Tick), $this.RefreshRateMs)
     try {
-      $display = [LiveDisplayRegion]::new($this.Writer)
-      $session = [ProgressLiveSession]::new($this, $context, $display)
-      $thread = [ProgressRefreshThread]::new(([TimerCallback] $session.Tick), $this.RefreshRateMs)
-      try {
-        $action.Invoke($context)
-        $session.Tick($null)
-      } finally {
-        $thread.Dispose()
-        $session.Tick($null)
-        $display.Complete($session.LastLines)
-      }
+      $action.Invoke($context)
+      $session.Tick($null)
     } finally {
-      # Restore the writer to its original mode.
-      $this.Writer._output.WriteRaw  = $prevWriteRaw
-      $this.Writer.Capabilities.Ansi = $prevAnsi
+      $thread.Dispose()
+      $session.Tick($null)
+      $display.Complete($session.LastLines)
     }
   }
 
