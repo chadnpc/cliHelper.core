@@ -306,16 +306,21 @@ class JobRunnerOptions {
       }
 
       $markup = "`r$(' ' * $this.LeftPadding)"
-      $markup += "[grey][[/][$indexStr][grey]][/] "
+      $markup += "[grey][[$indexStr]][/] "
       $markup += "$nameStr "
 
+      $escBarStart = [AnsiMarkup]::Escape($this.Theme.BarStart)
+      $escBarEnd = [AnsiMarkup]::Escape($this.Theme.BarEnd)
+      $escFilledStr = [AnsiMarkup]::Escape($filledStr)
+      $escEmptyStr = [AnsiMarkup]::Escape($emptyStr)
+
       if ($barFilled -gt 0) {
-        $markup += "[$($this.Theme.BorderColor)]$($this.Theme.BarStart)[/]"
-        $markup += "[$($this.Theme.BarColor)]$filledStr[/]"
-        if ($barEmpty -gt 0) { $markup += "[$($this.Theme.BorderColor)]$emptyStr[/]" }
-        $markup += "[$($this.Theme.BorderColor)]$($this.Theme.BarEnd)[/]"
+        $markup += "[$($this.Theme.BorderColor)]$escBarStart[/]"
+        $markup += "[$($this.Theme.BarColor)]$escFilledStr[/]"
+        if ($barEmpty -gt 0) { $markup += "[$($this.Theme.BorderColor)]$escEmptyStr[/]" }
+        $markup += "[$($this.Theme.BorderColor)]$escBarEnd[/]"
       } else {
-        $markup += "[$($this.Theme.BorderColor)]$($this.Theme.BarStart)$emptyStr$($this.Theme.BarEnd)[/]"
+        $markup += "[$($this.Theme.BorderColor)]$escBarStart$escEmptyStr$escBarEnd[/]"
       }
 
       $markup += " [$($this.Theme.TextColor)]$progressStr[/] "
