@@ -15,7 +15,7 @@ try {
   [ConsoleHelper]::DemoSearchableListPrompt()
   [ConsoleHelper]::DemoAnsiInThreadrunner()
   [ConsoleHelper]::DemoFailingTaskInThreadrunner()
-  [ConsoleHelper]::DemoStatus()
+  [ConsoleHelper]::DemoStatus() # failing - crashing
   [ConsoleHelper]::DemoTextPrompt()
   [ConsoleHelper]::DemoConfirmPrompt()
   [ConsoleHelper]::DemoSelectionPrompt()
