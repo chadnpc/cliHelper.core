@@ -11,8 +11,10 @@ using namespace System.Management.Automation.Runspaces
 using module .\ErrorMan.psm1
 using module .\Config.psm1
 using module .\Models.psm1
-using module .\Console.psm1
+
 using module .\Console\Internal.psm1
+using module .\Console\Ansi.psm1
+using module .\Console\Ui.psm1
 using module .\Utilities.psm1
 
 
@@ -279,7 +281,13 @@ class JobRunnerOptions {
       $emptyStr = $this.Theme.BarEmpty * $barEmpty
 
       $indexStr = $Job.Index.ToString("D2")
-      $nameStr = if ($Job.Name.Length -gt 20) { $Job.Name.Substring(0, 17) + "..." } else { $Job.Name.PadRight(20) }
+      $plainName = [AnsiMarkup]::Remove($Job.Name)
+      if ($plainName.Length -gt 20) {
+        $nameStr = $plainName.Substring(0, 17) + "..."
+      } else {
+        $nameStr = $Job.Name + (" " * (20 - $plainName.Length))
+      }
+
       $progressStr = $Job.Progress.ToString("F1").PadLeft(6) + "%"
 
       # Synchronous Twirl Generation based on TickCount
@@ -296,24 +304,25 @@ class JobRunnerOptions {
         "Failed" { $this.Theme.FailedColor; break }
         default { $this.Theme.PendingColor }
       }
-      # todo: use write-console cmdlet and use one of these colors: [ValidateScript( { return [bool][RGB]$_ })][string]$msgColor
-      Write-Host "`r$(' ' * $this.LeftPadding)" -NoNewline
-      Write-Host "[$indexStr]" -NoNewline -ForegroundColor DarkGray
-      Write-Host " $nameStr " -NoNewline -ForegroundColor $this.Theme.TextColor
+
+      $markup = "`r$(' ' * $this.LeftPadding)"
+      $markup += "[grey][[/][$indexStr][grey]][/] "
+      $markup += "$nameStr "
 
       if ($barFilled -gt 0) {
-        Write-Host $this.Theme.BarStart -NoNewline -ForegroundColor $this.Theme.BorderColor
-        Write-Host $filledStr -NoNewline -ForegroundColor $this.Theme.BarColor
-        if ($barEmpty -gt 0) { Write-Host $emptyStr -NoNewline -ForegroundColor $this.Theme.BorderColor }
-        Write-Host $this.Theme.BarEnd -NoNewline -ForegroundColor $this.Theme.BorderColor
+        $markup += "[$($this.Theme.BorderColor)]$($this.Theme.BarStart)[/]"
+        $markup += "[$($this.Theme.BarColor)]$filledStr[/]"
+        if ($barEmpty -gt 0) { $markup += "[$($this.Theme.BorderColor)]$emptyStr[/]" }
+        $markup += "[$($this.Theme.BorderColor)]$($this.Theme.BarEnd)[/]"
       } else {
-        Write-Host "$($this.Theme.BarStart)$emptyStr$($this.Theme.BarEnd)" -NoNewline -ForegroundColor $this.Theme.BorderColor
+        $markup += "[$($this.Theme.BorderColor)]$($this.Theme.BarStart)$emptyStr$($this.Theme.BarEnd)[/]"
       }
 
-      Write-Host " $progressStr " -NoNewline -ForegroundColor $this.Theme.TextColor
-      Write-Host " $statusStr" -NoNewline -ForegroundColor $statusColor
-      Write-Host " $($Job.ElapsedTime)" -NoNewline -ForegroundColor DarkGray
-      Write-Host "      " -NoNewline
+      $markup += " [$($this.Theme.TextColor)]$progressStr[/] "
+      $markup += "[$statusColor]$statusStr[/] "
+      $markup += "[grey]$($Job.ElapsedTime)[/]      "
+
+      [AnsiConsole]::Markup($markup)
     } finally {
       $this.Mutex.ReleaseMutex()
     }
