@@ -15,6 +15,7 @@ using module .\Models.psm1
 using module .\Console\Internal.psm1
 using module .\Console\Ansi.psm1
 using module .\Console\Ui.psm1
+using module .\Console\Colors.psm1
 using module .\Utilities.psm1
 
 
@@ -146,14 +147,14 @@ class AsyncResult : System.IAsyncResult {
 }
 
 class ProgressTheme {
-  [ConsoleColor]$BarColor
-  [ConsoleColor]$CompletedColor
-  [ConsoleColor]$RunningColor
-  [ConsoleColor]$FailedColor
-  [ConsoleColor]$PendingColor
-  [ConsoleColor]$TextColor
-  [ConsoleColor]$HeaderColor
-  [ConsoleColor]$BorderColor
+  [Color]$BarColor
+  [Color]$CompletedColor
+  [Color]$RunningColor
+  [Color]$FailedColor
+  [Color]$PendingColor
+  [Color]$TextColor
+  [Color]$HeaderColor
+  [Color]$BorderColor
   [string]$TwirlFrames
   [string]$BarFilled
   [string]$BarEmpty
@@ -310,33 +311,10 @@ class JobRunnerOptions {
         default { $this.Theme.PendingColor }
       }
 
-      $toMarkupColor = {
-        param([ConsoleColor]$c)
-        switch ($c) {
-          ([ConsoleColor]::Black) { "Black" }
-          ([ConsoleColor]::DarkBlue) { "Navy" }
-          ([ConsoleColor]::DarkGreen) { "Green" }
-          ([ConsoleColor]::DarkCyan) { "Teal" }
-          ([ConsoleColor]::DarkRed) { "Maroon" }
-          ([ConsoleColor]::DarkMagenta) { "Purple" }
-          ([ConsoleColor]::DarkYellow) { "Olive" }
-          ([ConsoleColor]::Gray) { "Silver" }
-          ([ConsoleColor]::DarkGray) { "Grey" }
-          ([ConsoleColor]::Blue) { "Blue" }
-          ([ConsoleColor]::Green) { "Lime" }
-          ([ConsoleColor]::Cyan) { "Aqua" }
-          ([ConsoleColor]::Red) { "Red" }
-          ([ConsoleColor]::Magenta) { "Fuchsia" }
-          ([ConsoleColor]::Yellow) { "Yellow" }
-          ([ConsoleColor]::White) { "White" }
-          default { $c.ToString() }
-        }
-      }
-
-      $borderColorM = & $toMarkupColor $this.Theme.BorderColor
-      $barColorM = & $toMarkupColor $this.Theme.BarColor
-      $textColorM = & $toMarkupColor $this.Theme.TextColor
-      $statusColorM = & $toMarkupColor $statusColor
+      $borderColorM = $this.Theme.BorderColor.ToMarkup()
+      $barColorM = $this.Theme.BarColor.ToMarkup()
+      $textColorM = $this.Theme.TextColor.ToMarkup()
+      $statusColorM = $statusColor.ToMarkup()
 
       $markup = "`r$(' ' * $this.LeftPadding)"
       $markup += "[grey][[$indexStr]][/] "
