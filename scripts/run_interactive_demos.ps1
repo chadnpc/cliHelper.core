@@ -2,11 +2,6 @@
 # [ConsoleHelper].GetMethods().Where({ $_.IsStatic -and $_.Name.StartsWith("Demo") }).Name
 $failed = $false
 try {
-  [ConsoleHelper]::DemoProgress()
-  [ConsoleHelper]::DemoFigletText()
-  [ConsoleHelper]::DemoSearchableListPrompt()
-  [ConsoleHelper]::DemoAnsiInThreadrunner()
-  [ConsoleHelper]::DemoConfirmPrompt()
   [ConsoleHelper]::DemoMarkup()
   [ConsoleHelper]::DemoTextandMarkup()
   [ConsoleHelper]::DemoPanelsRulesandAlignment()
@@ -15,14 +10,16 @@ try {
   [ConsoleHelper]::DemoTreeRendering()
   [ConsoleHelper]::DemoJSONRendering()
   [ConsoleHelper]::DemoChartsandCalendar()
+  [ConsoleHelper]::DemoProgress()
+  [ConsoleHelper]::DemoFigletText()
+  [ConsoleHelper]::DemoSearchableListPrompt()
+  [ConsoleHelper]::DemoAnsiInThreadrunner()
+  [ConsoleHelper]::DemoFailingTaskInThreadrunner()
+  [ConsoleHelper]::DemoStatus()
   [ConsoleHelper]::DemoTextPrompt()
+  [ConsoleHelper]::DemoConfirmPrompt()
   [ConsoleHelper]::DemoSelectionPrompt()
   [ConsoleHelper]::DemoMultiSelectionPrompt()
-  [ConsoleHelper]::DemoConfirmPrompt()
-  [ConsoleHelper]::DemoStatus()
-  [ConsoleHelper]::DemoLiveStatus()
-  [ConsoleHelper]::DemoProgress()
-  [ConsoleHelper]::DemoFailingTaskInThreadrunner()
   [ConsoleHelper]::DemoCliArt()
 } catch {
   $failed = $true
