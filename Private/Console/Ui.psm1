@@ -104,12 +104,12 @@ class AnsiConsoleFacade : IAnsiConsole {
     $this.Clear($true)
   }
 
-  [void] Clear([bool]$_Home) {
+  [void] Clear([bool]$CursorHome) {
     [Monitor]::Enter($this._renderLock)
     try {
       if ($this._writer.Capabilities.Ansi) {
         $this._writer.Write("`e[2J")
-        if ($_Home) {
+        if ($CursorHome) {
           $this._writer.Write("`e[H")
         }
       } else {
