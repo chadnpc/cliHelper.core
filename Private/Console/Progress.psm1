@@ -539,16 +539,30 @@ class Progress {
   }
 
   [void] Start([ProgressContext]$context, [Action[ProgressContext]]$action) {
-    $display = [LiveDisplayRegion]::new($this.Writer)
-    $session = [ProgressLiveSession]::new($this, $context, $display)
-    $thread = [ProgressRefreshThread]::new(([TimerCallback] $session.Tick), $this.RefreshRateMs)
+    # During progress rendering, route output through the PowerShell Host UI
+    # (which strips ANSI escape sequences) instead of raw stdout.
+    # This prevents cursor-movement sequences (e.g. \e[{n}F) from scrolling
+    # back over any Write-Host lines that were printed before the progress bar.
+    $prevWriteRaw = $this.Writer._output.WriteRaw
+    $prevAnsi     = $this.Writer.Capabilities.Ansi
+    $this.Writer._output.WriteRaw  = $false
+    $this.Writer.Capabilities.Ansi = $false
     try {
-      $action.Invoke($context)
-      $session.Tick($null)
+      $display = [LiveDisplayRegion]::new($this.Writer)
+      $session = [ProgressLiveSession]::new($this, $context, $display)
+      $thread = [ProgressRefreshThread]::new(([TimerCallback] $session.Tick), $this.RefreshRateMs)
+      try {
+        $action.Invoke($context)
+        $session.Tick($null)
+      } finally {
+        $thread.Dispose()
+        $session.Tick($null)
+        $display.Complete($session.LastLines)
+      }
     } finally {
-      $thread.Dispose()
-      $session.Tick($null)
-      $display.Complete($session.LastLines)
+      # Restore the writer to its original mode.
+      $this.Writer._output.WriteRaw  = $prevWriteRaw
+      $this.Writer.Capabilities.Ansi = $prevAnsi
     }
   }
 
