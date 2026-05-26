@@ -179,14 +179,14 @@ class ConsoleWriter : System.IO.TextWriter {
     return $this.Write($text, $Preffix, $Speed, $Duration, $color, $Animate, $AddPreffix, $this.ValidateScript)
   }
   [string] write([string]$text, [string]$Preffix, [int]$Speed, [int]$Duration, [ConsoleColor]$color, [bool]$Animate, [bool]$AddPreffix, [scriptblock]$ValidateScript) {
-    if ($null -ne $ValidateScript) {
+    if ($null -ne $ValidateScript -and !$this.WriteRaw) {
       [void]$ValidateScript.Invoke($text)
     } elseif ($null -eq $text) {
       return $text
     }
     [int]$length = $text.Length; $delay = 0
     # Check if delay time is required:
-    $delayIsRequired = if ($length -lt 50) { $false } else { $delay = $Duration - $length * $Speed; $delay -gt 0 }
+    $delayIsRequired = if (!$this.WriteRaw -and $length -ge 50) { $delay = $Duration - $length * $Speed; $delay -gt 0 } else { $false }
     if ($AddPreffix -and ![string]::IsNullOrEmpty($Preffix)) {
       [void]$this.Write($Preffix, [string]::Empty, 1, 100, [ConsoleColor]::Green, $false, $false);
     }
