@@ -142,7 +142,7 @@ class ConsoleHelper {
 
         $task = $ctx.AddTask('[green]Loading data[/]', [ProgressTaskSettings]::new())
         foreach ($step in 1..5) {
-          Start-Sleep -Milliseconds 120
+          Start-Sleep -Milliseconds 1000
           $task.Increment(20)
         }
       }
