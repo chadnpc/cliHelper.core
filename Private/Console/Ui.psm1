@@ -62,8 +62,16 @@ class AnsiConsoleFacade : IAnsiConsole {
     }
 
     if ($value -is [string] -and $value -match '\[[^\]]+\]') {
-      $this.Write([Markup]::new([string]$value))
-      return
+      $markupwasok = $false
+      try {
+        $this.Write([Markup]::new([string]$value))
+        $markupwasok = $true
+      } catch {
+        Write-Debug "Failed to write markup. $_"
+      }
+      if ($markupwasok) {
+        return
+      }
     }
 
     $text = if ($null -eq $value) { [string]::Empty } else { [string]$value }
