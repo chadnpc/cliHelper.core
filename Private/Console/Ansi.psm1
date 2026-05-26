@@ -99,6 +99,7 @@ class AnsiWriter {
 
   hidden [void] initialize ([ConsoleWriter]$output) {
     $this._output = $output
+    $this._output.WriteRaw = $true
     $this.Capabilities = [AnsiCapabilities]::new()
     $this.Capabilities.Ansi = $true
     $this.Capabilities.ColorSystem = [ColorSystem]::TrueColor
@@ -111,15 +112,15 @@ class AnsiWriter {
   }
 
   [void] Write([string]$text) {
-    $this._output.WriteRaw($text)
+    $this._output.Write($text)
   }
 
   [void] WriteLine() {
-    $this._output.WriteRaw("`n")
+    $this._output.Write("`n")
   }
 
   [void] WriteLine([string]$text) {
-    $this._output.WriteRaw($text + "`n")
+    $this._output.Write($text + "`n")
   }
 
   [void] Write([string]$text, [Style]$style) {
