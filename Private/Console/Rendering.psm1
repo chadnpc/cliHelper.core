@@ -517,19 +517,11 @@ class MarkupStyleParser {
   static hidden [int] FindTagEnd([string]$markup, [int]$startIndex) {
     $index = $startIndex
     while ($index -lt $markup.Length) {
-      $current = $markup[$index]
-      if ($current -eq ']') {
-        if (($index + 1) -lt $markup.Length -and $markup[$index + 1] -eq ']') {
-          $index += 2
-          continue
-        }
-
+      if ($markup[$index] -eq ']') {
         return $index
       }
-
       $index++
     }
-
     return -1
   }
 }
