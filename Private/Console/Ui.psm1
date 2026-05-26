@@ -31,32 +31,13 @@ class AnsiConsoleFacade : IAnsiConsole {
     $this.ExclusivityMode = [NoopExclusivityMode]::new()
     $this._renderLock = [object]::new()
   }
-
-  [AnsiWriter] get_Writer() { return $this._writer }
-  [void] use_typingEffect([bool]$condition) {
-    $this._writer._output.UseTypingEffect = $condition
-    $this._writer._output.WriteRaw = !$condition
+  [void] Write([string]$string) {
+    $this.Write([Text]$string)
   }
-  [void] Clear() {
-    $this.Clear($true)
+  [void] Write([string]$string, [bool]$Animate) {
+    $this.use_typingEffect($Animate)
+    $this.Write([Text]$string)
   }
-
-  [void] Clear([bool]$_Home) {
-    [Monitor]::Enter($this._renderLock)
-    try {
-      if ($this._writer.Capabilities.Ansi) {
-        $this._writer.Write("`e[2J")
-        if ($_Home) {
-          $this._writer.Write("`e[H")
-        }
-      } else {
-        [Console]::Clear()
-      }
-    } finally {
-      [Monitor]::Exit($this._renderLock)
-    }
-  }
-
   [void] Write([IRenderable]$renderable) {
     if ($null -eq $renderable) {
       return
@@ -69,7 +50,10 @@ class AnsiConsoleFacade : IAnsiConsole {
       [Monitor]::Exit($this._renderLock)
     }
   }
-
+  [void] WriteLine([string]$string) {
+    $this.WriteObject($string)
+    $this._writer.WriteLine()
+  }
   [void] WriteObject([object]$value) {
     if ($value -is [IRenderable]) {
       $this.Write([IRenderable]$value)
@@ -115,10 +99,31 @@ class AnsiConsoleFacade : IAnsiConsole {
     $this.Markup($markup)
     $this._writer.WriteLine()
   }
+  [void] Clear() {
+    $this.Clear($true)
+  }
 
-  [void] WriteLine([string]$text) {
-    $this.WriteObject($text)
-    $this._writer.WriteLine()
+  [void] Clear([bool]$_Home) {
+    [Monitor]::Enter($this._renderLock)
+    try {
+      if ($this._writer.Capabilities.Ansi) {
+        $this._writer.Write("`e[2J")
+        if ($_Home) {
+          $this._writer.Write("`e[H")
+        }
+      } else {
+        [Console]::Clear()
+      }
+    } finally {
+      [Monitor]::Exit($this._renderLock)
+    }
+  }
+  [AnsiWriter] get_Writer() {
+    return $this._writer
+  }
+  [void] use_typingEffect([bool]$condition) {
+    $this._writer._output.UseTypingEffect = $condition
+    $this._writer._output.WriteRaw = !$condition
   }
 }
 
@@ -126,7 +131,7 @@ class AnsiConsole {
   static [IAnsiConsole] $Console
 
   static AnsiConsole() {
-    [AnsiConsole]::Reset()
+    [AnsiConsole]::Initialize()
   }
 
   static [void] Markup([string]$markup) {
@@ -149,7 +154,7 @@ class AnsiConsole {
     ([AnsiConsoleFacade][AnsiConsole]::Console).WriteLine($text)
   }
 
-  static [void] Reset() {
+  static [void] Initialize() {
     [AnsiConsole]::Console = [AnsiConsoleFactory]::Create([AnsiConsoleSettings]::new())
   }
 }
