@@ -134,6 +134,8 @@ class ConsoleReader : System.IO.TextReader {
 }
 
 class ConsoleWriter : System.IO.TextWriter {
+  # WriteRaw tells the writer to Write text directly to stdout without any color/animation processing. This is the correct method for ANSI escape sequences emitted by AnsiWriter.
+  [bool] $WriteRaw = $false
   hidden [string] $LeadPreffix
   static hidden [string[]] $Colors = [ConsoleWriter]::get_ColorNames()
   hidden [ValidateNotNull()][scriptblock]$ValidateScript = { param($arg) if ($null -eq $arg) { throw [ArgumentNullException]::new('text', 'Cannot be Null') } }
@@ -192,23 +194,21 @@ class ConsoleWriter : System.IO.TextWriter {
     [Console]::ForegroundColor = $color; $hostUI = (Get-Host).UI
     if ($Animate) {
       for ($i = 0; $i -lt $length; $i++) {
-        $hostUI.Write($text[$i]);
+        if ($this.WriteRaw) { [System.Console]::Write($text[$i]) } else { $hostUI.Write($text[$i]) }
         Start-Sleep -Milliseconds $Speed;
       }
     } else {
-      $hostUI.Write($text);
+      if ($this.WriteRaw) {
+        [System.Console]::Write($text)
+      } else {
+        $hostUI.Write($text)
+      }
     }
     if ($delayIsRequired) {
       Start-Sleep -Milliseconds $delay
     }
     [Console]::ForegroundColor = $FgColr
     return $text
-  }
-  # WriteRaw: Writes text directly to stdout without any color/animation processing.
-  # This is the correct method for ANSI escape sequences emitted by AnsiWriter.
-  [void] WriteRaw([string]$text) {
-    if ($null -eq $text) { return }
-    [System.Console]::Write($text)
   }
   static [byte[]] Encode([string]$text) {
     return [System.Text.Encoding]::UTF8.GetBytes($text)
