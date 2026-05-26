@@ -128,6 +128,26 @@ class ConsoleHelper {
     )
     $console.Write($calendar)
   }
+  static [void] DemoProgress() {
+    Write-Host "Text before progress bar... line 1"
+    Write-Host "Text before progress bar... line 2"
+    Write-Host "Text before progress bar... line 3"
+    # the test is successfule if by the end of thew progress, all 3 initial lines are still visible (not overwritten)
+    $console = [AnsiConsole]::Console
+    $progress = [Progress]::new($console)
+    $progress.RefreshRateMs = 80
+
+    $progress.Start([Action[ProgressContext]] {
+        param([ProgressContext]$ctx)
+
+        $task = $ctx.AddTask('Loading data', [ProgressTaskSettings]::new())
+        foreach ($step in 1..5) {
+          Start-Sleep -Milliseconds 120
+          $task.Increment(20)
+        }
+      }
+    )
+  }
   static [void] DemoFigletText() {
     $fig = [FigletText]::new([FigletFont]::DEFAULT_3D, 'ansiconsole')
     [AnsiConsole]::Console.Write($fig)
