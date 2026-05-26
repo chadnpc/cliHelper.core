@@ -245,12 +245,12 @@ class ConsoleHelper {
   static [void] DemoCliArt() {
     $art = Create-CliArt "https://pastebin.com/raw/p29UR385" -Taglines "Build. Ship. Repeat."; $art.Replace("x.y.z", "0.3.2");
     $art.Write(15, $false, $true)
-    $progressBar = [type]"ProgressUtil"
+    $progressHelper = [type]"ProgressUtil"
     $RequestParams = @{
       Uri    = 'https://jsonplaceholder.typicode.com/todos/1'
       Method = 'GET'
     }
-    $result = $progressBar::WaitJob("Making a request", { param($rp) Start-Sleep -Seconds 2; Invoke-RestMethod @rp }, $RequestParams) | Receive-Job
+    $result = $progressHelper::WaitJob("Making a request", { param($rp) Start-Sleep -Seconds 2; Invoke-RestMethod @rp }, $RequestParams) | Receive-Job
     Write-Output $result
   }
 }
