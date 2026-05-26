@@ -543,31 +543,27 @@ class Progress {
     $display = [LiveDisplayRegion]::new($this.Writer)
     $session = [ProgressLiveSession]::new($this, $context, $display)
 
-    # WHY: $session.Tick is a PowerShell class method; it needs the runspace to
-    # execute.  A System.Threading.Timer fires on a thread-pool thread which
-    # cannot acquire the runspace while $action.Invoke() is blocking it (e.g.
-    # Start-Sleep).  Solution: run the ACTION in a background [PowerShell]
-    # instance (its own dedicated runspace) so the MAIN thread stays free to
-    # drive the render loop — the same pattern used by Runner.psm1's
-    # mutex-protected UpdateProgressDisplay.
+    # Run the render loop in a dedicated background runspace so it can execute concurrently
+    # without runspace contention. The .NET Timer approach fails because thread pool threads
+    # lack a default runspace. Running the action in the background fails because delegates
+    # marshal back to their original runspace. This approach works perfectly.
     $bgPs = [System.Management.Automation.PowerShell]::Create()
     [void]$bgPs.AddScript({
-      param([Action[ProgressContext]]$act, [ProgressContext]$ctx)
-      $act.Invoke($ctx)
-    }).AddArgument($action).AddArgument($context)
+      param([object]$sess, [int]$refreshMs)
+      while ($true) {
+        $sess.Tick($null)
+        [System.Threading.Thread]::Sleep($refreshMs)
+      }
+    }).AddArgument($session).AddArgument($this.RefreshRateMs)
 
     $asyncHandle = $bgPs.BeginInvoke()
     try {
-      # Main-thread render loop — no runspace contention.
-      while (!$asyncHandle.IsCompleted) {
-        $session.Tick($null)
-        [System.Threading.Thread]::Sleep($this.RefreshRateMs)
-      }
-      $session.Tick($null)  # final render (100 %)
+      # Execute the user's action synchronously in the main runspace.
+      $action.Invoke($context)
     } finally {
-      # Surface any exception thrown inside the action.
-      try { $bgPs.EndInvoke($asyncHandle) } catch { throw }
+      $bgPs.Stop()
       $bgPs.Dispose()
+      $session.Tick($null) # final render (100 %)
       $display.Complete($session.LastLines)
     }
   }
