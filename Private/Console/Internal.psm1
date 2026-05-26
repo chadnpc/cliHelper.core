@@ -191,7 +191,8 @@ class ConsoleWriter : System.IO.TextWriter {
       [void]$this.Write($Preffix, [string]::Empty, 1, 100, [ConsoleColor]::Green, $false, $false);
     }
     $FgColr = [Console]::ForegroundColor
-    [Console]::ForegroundColor = $color; $hostUI = (Get-Host).UI
+    if (!$this.WriteRaw) { [Console]::ForegroundColor = $color }
+    $hostUI = (Get-Host).UI
     if ($Animate) {
       for ($i = 0; $i -lt $length; $i++) {
         if ($this.WriteRaw) { [System.Console]::Write($text[$i]) } else { $hostUI.Write($text[$i]) }
@@ -204,10 +205,8 @@ class ConsoleWriter : System.IO.TextWriter {
         $hostUI.Write($text)
       }
     }
-    if ($delayIsRequired) {
-      Start-Sleep -Milliseconds $delay
-    }
-    [Console]::ForegroundColor = $FgColr
+    if ($delayIsRequired) { Start-Sleep -Milliseconds $delay }
+    if (!$this.WriteRaw) { [Console]::ForegroundColor = $FgColr }
     return $text
   }
   static [byte[]] Encode([string]$text) {
