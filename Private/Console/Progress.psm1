@@ -64,8 +64,15 @@ class ProgressTaskState {
 
 class ProgressTask {
   hidden [ProgressTaskState]$_state
+  [Action]$OnUpdate
 
   ProgressTask([ProgressTaskState]$state) { $this._state = $state }
+
+  hidden [void] TriggerUpdate() {
+    if ($null -ne $this.OnUpdate) {
+      $this.OnUpdate.Invoke()
+    }
+  }
 
   [ProgressTaskState] GetState() { return $this._state.Snapshot() }
 
@@ -80,6 +87,7 @@ class ProgressTask {
     } finally {
       [Monitor]::Exit($this._state.SyncRoot)
     }
+    $this.TriggerUpdate()
   }
 
   [void] SetValue([double]$value) {
@@ -93,6 +101,7 @@ class ProgressTask {
     } finally {
       [Monitor]::Exit($this._state.SyncRoot)
     }
+    $this.TriggerUpdate()
   }
 
   [void] SetDescription([string]$description) {
@@ -102,6 +111,7 @@ class ProgressTask {
     } finally {
       [Monitor]::Exit($this._state.SyncRoot)
     }
+    $this.TriggerUpdate()
   }
 
   [void] Start() {
@@ -113,6 +123,7 @@ class ProgressTask {
     } finally {
       [Monitor]::Exit($this._state.SyncRoot)
     }
+    $this.TriggerUpdate()
   }
 
   [void] Complete() {
@@ -124,6 +135,7 @@ class ProgressTask {
     } finally {
       [Monitor]::Exit($this._state.SyncRoot)
     }
+    $this.TriggerUpdate()
   }
 }
 
@@ -137,6 +149,7 @@ class ProgressContext {
   hidden [List[ProgressTaskState]]$_tasks
   hidden [int]$_nextId
   hidden [object]$_syncRoot
+  [Action]$OnUpdate
 
   ProgressContext() {
     $this._tasks = [List[ProgressTaskState]]::new()
@@ -156,7 +169,9 @@ class ProgressContext {
       }
       $this._tasks.Add($state)
       $this._nextId++
-      return [ProgressTask]::new($state)
+      $task = [ProgressTask]::new($state)
+      $task.OnUpdate = $this.OnUpdate
+      return $task
     } finally {
       [Monitor]::Exit($this._syncRoot)
     }
@@ -543,26 +558,14 @@ class Progress {
     $display = [LiveDisplayRegion]::new($this.Writer)
     $session = [ProgressLiveSession]::new($this, $context, $display)
 
-    # Run the render loop in a dedicated background runspace so it can execute concurrently
-    # without runspace contention. The .NET Timer approach fails because thread pool threads
-    # lack a default runspace. Running the action in the background fails because delegates
-    # marshal back to their original runspace. This approach works perfectly.
-    $bgPs = [System.Management.Automation.PowerShell]::Create()
-    [void]$bgPs.AddScript({
-      param([object]$sess, [int]$refreshMs)
-      while ($true) {
-        $sess.Tick($null)
-        [System.Threading.Thread]::Sleep($refreshMs)
-      }
-    }).AddArgument($session).AddArgument($this.RefreshRateMs)
+    # Render synchronously on task updates to avoid PowerShell runspace deadlocks.
+    $context.OnUpdate = [Action] { $session.Tick($null) }
 
-    $asyncHandle = $bgPs.BeginInvoke()
     try {
+      $session.Tick($null) # Initial render
       # Execute the user's action synchronously in the main runspace.
       $action.Invoke($context)
     } finally {
-      $bgPs.Stop()
-      $bgPs.Dispose()
       $session.Tick($null) # final render (100 %)
       $display.Complete($session.LastLines)
     }
