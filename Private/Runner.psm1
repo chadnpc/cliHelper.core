@@ -603,7 +603,7 @@ class ThreadRunner {
 
     Write-Host "  $(' ' * $opts.LeftPadding)" -NoNewline
     Write-Host $opts.JobsTitle -ForegroundColor $opts.Theme.HeaderColor
-    Write-Host "$(' ' * $opts.LeftPadding) ID    NAME              PROGRESS                           STATUS            TIME" -ForegroundColor DarkGray
+    Write-Host "$(' ' * $opts.LeftPadding) ID    NAME                PROGRESS                         STATUS            TIME" -ForegroundColor DarkGray
     Write-Host ""
 
     $startY = [Console]::CursorTop
