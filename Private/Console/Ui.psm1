@@ -61,6 +61,7 @@ class AnsiConsoleFacade : IAnsiConsole {
       return
     }
 
+    # try markup but if that fails then skip it - render as plain text
     if ($value -is [string] -and $value -match '\[[^\]]+\]') {
       $markupwasok = $false
       try {
