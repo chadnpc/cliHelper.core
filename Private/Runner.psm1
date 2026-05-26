@@ -27,6 +27,11 @@ class JobResult {
   hidden [string]$Status
   hidden [int]$DurationMs
   hidden [System.Diagnostics.Stopwatch]$Stopwatch
+
+  [void] RemoveMarkup() {
+    $this.Name = [AnsiMarkup]::Remove($this.Name)
+    $this.Status = [AnsiMarkup]::Remove($this.Status)
+  }
 }
 
 class BackgroundJob {
@@ -645,7 +650,7 @@ class ThreadRunner {
 
     Write-Host "  $(' ' * $opts.LeftPadding)" -NoNewline
     Write-Host $opts.JobsTitle -ForegroundColor $opts.Theme.HeaderColor
-    Write-Host "$(' ' * $opts.LeftPadding) ID    NAME                PROGRESS                         STATUS            TIME" -ForegroundColor DarkGray
+    Write-Host "$(' ' * $opts.LeftPadding) ID    NAME                PROGRESS                                STATUS         TIME" -ForegroundColor DarkGray
     Write-Host ""
 
     $startY = [Console]::CursorTop
@@ -715,6 +720,7 @@ class ThreadRunner {
 
           $job.PowerShellInstance.Dispose()
           $runningJobs.RemoveAt($i)
+          $job.Result.RemoveMarkup()
           $results.Add($job.Result)
         } else {
           # Simulate progress if not 100
