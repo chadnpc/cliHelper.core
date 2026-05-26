@@ -128,12 +128,11 @@ function Write-Console {
       }
     }
     $str = $f + $b + $Text + $resetAttributes
-    # $console = [AnsiConsole]::Console
-    # $console.use_typingEffect($Animate.IsPresent)
+    $console = [AnsiConsole]::Console
     if (!$NoNewLine.IsPresent) {
-      $Animate ? $([AnsiConsole]::Console.Write([text]$str); $host.UI.WriteLine()) : $Host.UI.WriteLine($str)
+      $console.Write($str, $Animate); $host.UI.WriteLine()
     } else {
-      $Animate ? $([AnsiConsole]::Console.Write([text]$str)) : $Host.UI.Write($str)
+      $console.Write($str, $Animate)
     }
   }
   end {
