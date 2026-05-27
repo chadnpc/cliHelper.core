@@ -146,7 +146,7 @@ class ProgressSessionSettings : PsRecord {
   $ProgressMsgColor = "LightGoldenrodYellow"
   $ProgressBlock = '■'
   ProgressSessionSettings() : base() {}
-  ProgressSessionSettings([hashtable]$hashtable): base($hashtable) {
+  ProgressSessionSettings($hashtable): base($hashtable) {
   }
   ProgressSessionSettings([hashtable[]]$array): base($array) {
   }
@@ -475,6 +475,7 @@ class ProgressLiveSession {
   [int]$Frame
   [DateTime]$LastUpdate
   [string[]]$LastLines
+  [ProgressSessionSettings]$settings
 
   ProgressLiveSession([Progress]$owner, [ProgressContext]$context, [LiveDisplayRegion]$display) {
     $this.Owner = $owner
@@ -534,6 +535,7 @@ class Progress {
   [AnsiWriter]$Writer
   [int]$RefreshRateMs = 100
   [List[ProgressColumn]]$Columns
+  [ProgressLiveSession]$session
 
   Progress([AnsiWriter]$writer) {
     $this.Writer = $writer
@@ -569,18 +571,18 @@ class Progress {
 
   [void] Start([ProgressContext]$context, [Action[ProgressContext]]$action) {
     $display = [LiveDisplayRegion]::new($this.Writer)
-    $session = [ProgressLiveSession]::new($this, $context, $display)
+    $this.session = [ProgressLiveSession]::new($this, $context, $display)
 
     # Render synchronously on task updates to avoid PowerShell runspace deadlocks.
-    $context.OnUpdate = [Action] { $session.Tick($null) }
+    $context.OnUpdate = [Action] { $this.session.Tick($null) }
 
     try {
-      $session.Tick($null) # Initial render
+      $this.session.Tick($null) # Initial render
       # Execute the user's action synchronously in the main runspace.
       $action.Invoke($context)
     } finally {
-      $session.Tick($null) # final render (100 %)
-      $display.Complete($session.LastLines)
+      $this.session.Tick($null) # final render (100 %)
+      $display.Complete($this.session.LastLines)
     }
   }
 
