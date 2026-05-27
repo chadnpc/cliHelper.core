@@ -71,13 +71,6 @@ $data = [ordered]@{
 ## requirements
 
 - PowerShell 7.0 or higher
-- UTF8 encoding in your terminal/PowerShell session
-
-  Add this to your `$Profile`:
-
-  ```PowerShell
-  $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-  ```
 
 ## development
 

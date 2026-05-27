@@ -60,6 +60,8 @@ using module Private\Security.psm1
 using module Private\Utilities.psm1
 using module Private\WebTools.psm1
 
+$global:OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
+
 # Types that will be available to users when they import the module.
 # Hint: To automatically update the typestoexport variable you can use:
 # scripts\update_exportable_types.ps1
