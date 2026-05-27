@@ -145,6 +145,11 @@ class ProgressSessionSettings : PsRecord {
   $ProgressBarColor = "LightSeaGreen"
   $ProgressMsgColor = "LightGoldenrodYellow"
   $ProgressBlock = '■'
+  ProgressSessionSettings() : base() {}
+  ProgressSessionSettings([hashtable]$hashtable): base($hashtable) {
+  }
+  ProgressSessionSettings([hashtable[]]$array): base($array) {
+  }
 }
 
 class ProgressTaskSettings {
