@@ -11,8 +11,8 @@ class PsRecord {
   PsRecord() {
     $this._init_()
   }
-  PsRecord([hashtable]$hashtable) {
-    $this.Add(@($hashtable)); $this._init_()
+  PsRecord($hashtable) {
+    $this.Add(@($this.ToHashtable($hashtable))); $this._init_()
   }
   PsRecord([hashtable[]]$array) {
     $this.Add($array); $this._init_()
@@ -26,7 +26,7 @@ class PsRecord {
     $this.Save()
   }
   [void] Add([hashtable]$table) {
-    [ValidateNotNullOrEmpty()][hashtable]$table = $table
+    [ValidateNotNull()][hashtable]$table = $table
     $Keys = $table.Keys | Where-Object { !$this.HasProperty($_) -and ($_.GetType().FullName -eq 'System.String' -or $_.GetType().BaseType.FullName -eq 'System.ValueType') }
     foreach ($key in $Keys) {
       if ($key -notin ('File', 'Remote', 'LastWriteTime')) {
@@ -45,7 +45,7 @@ class PsRecord {
     foreach ($item in $items) { $this.Add($item) }
   }
   [void] Add([string]$key, [System.Object]$value) {
-    [ValidateNotNullOrEmpty()][string]$key = $key
+    [ValidateNotNullOrWhiteSpace()][string]$key = $key
     if (!$this.HasProperty($key)) {
       $htab = [hashtable]::new(); $htab.Add($key, $value); $this.Add($htab)
     } else {
@@ -59,7 +59,7 @@ class PsRecord {
     $dict.Keys.Foreach({ $this.Set($_, $dict["$_"]) });
   }
   [void] Set([hashtable]$table) {
-    [ValidateNotNullOrEmpty()][hashtable]$table = $table
+    [ValidateNotNull()][hashtable]$table = $table
     $Keys = $table.Keys | Where-Object { $_.GetType().FullName -eq 'System.String' -or $_.GetType().BaseType.FullName -eq 'System.ValueType' } | Sort-Object -Unique
     foreach ($key in $Keys) {
       $nval = $table[$key]; [string]$val_type_name = ($null -ne $nval) ? $nval.GetType().Name : [string]::Empty
@@ -83,7 +83,7 @@ class PsRecord {
     return $cfg
   }
   [bool] HasProperty([object]$Name) {
-    [ValidateNotNullOrEmpty()][string]$Name = $($Name -as 'string')
+    [ValidateNotNullOrWhiteSpace()][string]$Name = $($Name -as 'string')
     return $this.PsObject.Properties.Name -contains "$Name"
   }
   [void] Import([String]$FilePath) {
@@ -93,6 +93,47 @@ class PsRecord {
   }
   [byte[]] ToByte() {
     return $this | xconvert ToBytes
+  }
+  [hashtable] ToHashtable([object]$InputObject) {
+    return $this.ToHashtable($InputObject, 64)
+  }
+  [hashtable] ToHashtable([object]$InputObject, [int] $MaxDepth) {
+    # Base cases
+    if ($null -eq $InputObject) { return $null }
+    if ($MaxDepth -le 0) { return $InputObject }
+
+    # Already a dictionary/hashtable — re-recurse its values
+    if ($InputObject -is [System.Collections.IDictionary]) {
+      $hash = @{}
+      foreach ($key in $InputObject.Keys) {
+        $hash[$key] = $this.ToHashtable($InputObject[$key], $MaxDepth - 1)
+      }
+      return $hash
+    }
+
+    # Enumerable (but not a string) — map each element
+    if ($InputObject -is [System.Collections.IEnumerable] -and
+      $InputObject -isnot [string]) {
+      $collection = [System.Collections.Generic.List[object]]::new()
+      foreach ($item in $InputObject) {
+        $collection.Add($this.ToHashtable($item, $MaxDepth - 1))
+      }
+      # Return a typed array so PowerShell doesn't unwrap a single-element list
+      return , $collection.ToArray()
+    }
+
+    # PSObject (e.g. deserialized JSON, Select-Object output, custom objects)
+    if ($InputObject -is [psobject] -and
+      $InputObject.PSObject.Properties.Count -gt 0) {
+      $hash = @{}
+      foreach ($prop in $InputObject.PSObject.Properties) {
+        $hash[$prop.Name] = $this.ToHashtable($prop.Value, $MaxDepth - 1)
+      }
+      return $hash
+    }
+
+    # Scalar / value type — return as-is
+    return $InputObject
   }
   [void] Import([uri]$raw_uri) { }
   [void] Upload() {
