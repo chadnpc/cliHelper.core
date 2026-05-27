@@ -140,15 +140,15 @@ class ProgressTask {
   }
 }
 
-class ProgressSessionSettings : PsRecord {
+class ProgressLiveSessionSettings : PsRecord {
   $ShowProgress = { return (Get-Variable 'VerbosePreference' -ValueOnly) -eq 'Continue' }
   $ProgressBarColor = "LightSeaGreen"
   $ProgressMsgColor = "LightGoldenrodYellow"
   $ProgressBlock = '■'
-  ProgressSessionSettings() : base() {}
-  ProgressSessionSettings($hashtable): base($hashtable) {
+  ProgressLiveSessionSettings() : base() {}
+  ProgressLiveSessionSettings($hashtable): base($hashtable) {
   }
-  ProgressSessionSettings([hashtable[]]$array): base($array) {
+  ProgressLiveSessionSettings([hashtable[]]$array): base($array) {
   }
 }
 
@@ -475,7 +475,7 @@ class ProgressLiveSession {
   [int]$Frame
   [DateTime]$LastUpdate
   [string[]]$LastLines
-  [ProgressSessionSettings]$settings
+  [ProgressLiveSessionSettings]$settings
 
   ProgressLiveSession([Progress]$owner, [ProgressContext]$context, [LiveDisplayRegion]$display) {
     $this.Owner = $owner
