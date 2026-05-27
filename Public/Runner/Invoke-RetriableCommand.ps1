@@ -209,8 +209,7 @@ function Invoke-RetriableCommand {
               $null = $ps.Start();
               if (!$ps) {
                 throw "Error running program: $($ps.ExitCode)"
-              }
-              else {
+              } else {
                 $ps.WaitForExit()
               }
               # Check the exit code of the process to see if it succeeded.
@@ -219,25 +218,21 @@ function Invoke-RetriableCommand {
               }
             }
             $Result.IsSuccess = [bool]$?
-          }
-          catch {
+          } catch {
             $Result.IsSuccess = $false
             $Result.ErrorRecord = $_.Exception.ErrorRecord
             $verbose ? (Write-Console "$fxn Errored: $($_.CategoryInfo.Category) : $($_.CategoryInfo.Reason) : $($_.Exception.Message)" -f LemonChiffon) : $null
           }
-        }
-        else {
+        } else {
           $Result.Output += Invoke-Command -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
           $Result.IsSuccess = [bool]$?
         }
-      }
-      catch {
+      } catch {
         $Result.IsSuccess = $false
         $Result.ErrorRecord = [System.Management.Automation.ErrorRecord]$_
         $verbose ? (Write-Console "$fxn Error after $([math]::Round(($(Get-Date) - $AttemptStartTime).TotalSeconds, 2)) seconds:" -f $cmdColors.Verbose) : $null
         $verbose ? (Write-Console "   $($_.CategoryInfo.Category) : $($_.CategoryInfo.Reason) : $($_.Exception.Message)" -f $cmdColors.Error) : $null
-      }
-      finally {
+      } finally {
         $Result.ET = [math]::Round(($(Get-Date) - $CommandStartTime).TotalSeconds, 2)
         [void]$Results.Add($Result)
         if (!$cancellationToken.IsCancellationRequested -and ($Retries -ne 0) -and !$Result.IsSuccess) {

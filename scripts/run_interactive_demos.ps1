@@ -21,6 +21,7 @@ $demos = @{
   DemoMultiSelectionPrompt      = "MultiSelection Prompt"
   DemoCliArt                    = "CliArt"
 }
+$results = [System.Collections.Generic.List[PsCustomObject]]::new()
 $demos.Keys.ForEach({
     Write-Console "[+] " -NoNewLine; Write-Console $demos[$_] -f LimeGreen
     $failed = $false
@@ -34,8 +35,9 @@ $demos.Keys.ForEach({
         Write-Host "The command failed." -ForegroundColor Red
         $Error[0] | Format-List * -Force
       } else {
-        Write-Host "Commands completed successfully." -ForegroundColor Green
+        $Host.UI.WriteLine()
       }
     }
   }
 )
+return $results.ToArray()

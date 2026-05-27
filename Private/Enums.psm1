@@ -7,6 +7,12 @@ enum ErrorSeverity {
 }
 
 
+
+enum ResultKind {
+  Ok
+  Err
+}
+
 enum HostOS {
   Windows
   Linux

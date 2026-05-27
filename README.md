@@ -44,7 +44,7 @@ then run demos
 
 ```PowerShell
 Import-Module cliHelper.core
-.\scripts\run_demo.ps1 -Verbose:$false
+.\scripts\run_interactive_demos.ps1
 ```
 
 
