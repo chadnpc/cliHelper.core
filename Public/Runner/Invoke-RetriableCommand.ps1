@@ -1,4 +1,5 @@
-﻿using namespace System.Management.Automation
+using module ..\..\Private\Result.psm1
+using namespace System.Management.Automation
 using namespace System.Collections.ObjectModel
 
 #Requires -Psedition Core
@@ -150,24 +151,6 @@ function Invoke-RetriableCommand {
       Progress    = 'SpringGreen'
       Information = 'LawnGreen'
     }
-    class Result {
-      [System.Management.Automation.PSDataCollection[PsObject]]$Output = [System.Management.Automation.PSDataCollection[PsObject]]::new()
-      [bool]$IsSuccess = $false
-      [System.Management.Automation.ErrorRecord]$ErrorRecord = $null
-      hidden [double]$ET = 0 # ElapsedTime
-    }
-    class Results {
-      hidden [System.Collections.ObjectModel.Collection[Result]]$Items = [System.Collections.ObjectModel.Collection[Result]]::new()
-      hidden [System.Management.Automation.ErrorRecord[]]$Errors = @()
-      Results() {
-        $this.PsObject.Properties.Add([PSScriptProperty]::new('ElapsedTime', { if ($this.Items.Count -gt 0) { return [double](($this.Items.ET | Measure-Object -Sum).Sum) }; return [double]0 }))
-        $this.PsObject.Properties.Add([PSScriptProperty]::new('IsSuccess', { $r = [bool]($this.Items.Count -gt 0 -and $this.Items.Where({ $_.IsSuccess }).Count -gt 0); $this.Errors = $this.Items.ErrorRecord; return $r }))
-        $this.PsObject.Properties.Add([PSScriptProperty]::new('HasErrors', { return  $this.Errors.Count -gt 0 }))
-        $this.PsObject.Properties.Add([PSScriptProperty]::new('Output', { return $this.Items.Output }))
-        $this.PsObject.Properties.Add([PSScriptProperty]::new('Count', { return $this.Items.Count }))
-      }
-      [void] Add([Result]$item) { $this.Items.Add($item) }
-    }
   }
 
   process {
@@ -176,71 +159,69 @@ function Invoke-RetriableCommand {
       Write-Console "$fxn $Message" -f $cmdColors.Information
     }
     while (($Attempts -le $MaxAttempts) -and !$Results.IsSuccess) {
-      $CommandStartTime = Get-Date; $Retries = $MaxAttempts - $Attempts
+      $AttemptStartTime = Get-Date; $Retries = $MaxAttempts - $Attempts
       if ($cancellationToken.IsCancellationRequested) { $verbose ? (Write-Console "$fxn CancellationRequested when $Retries retries were left." -f $cmdColors.Verbose) : $null; throw }
-      $Result = [Result]::new()
-      try {
-        $AttemptStartTime = Get-Date
-        $verbose ? (Write-Console "$fxn Attempt # $Attempts/$MaxAttempts ..." -f $cmdColors.Progress) : $null
+      
+      $verbose ? (Write-Console "$fxn Attempt # $Attempts/$MaxAttempts ..." -f $cmdColors.Progress) : $null
+      
+      $Result = Invoke-Safely {
         if ($PSCmdlet.ParameterSetName -eq 'Command') {
-          try {
-            $verbose ? (Write-Console "Running command line [$FilePath $ArgumentList] on $ComputerName" -f LemonChiffon) : $null
-            $Result.Output += Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-              $VerbosePreference = $using:VerbosePreference
-              $WhatIfPreference = $using:WhatIfPreference
-              $ps = [System.Diagnostics.Process]::new()
-              $ps_startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-              $ps_startInfo.FileName = $Using:FilePath;
-              if ($Using:ArgumentList) {
-                $ps_startInfo.Arguments = $Using:ArgumentList;
-                if ($Using:ExpandStrings) {
-                  $ps_startInfo.Arguments = $ExecutionContext.InvokeCommandWithCred.ExpandString($Using:ArgumentList);
-                }
-              }
-              if ($Using:WorkingDirectory) {
-                $ps_startInfo.WorkingDirectory = $Using:WorkingDirectory;
-                if ($Using:ExpandStrings) {
-                  $ps_startInfo.WorkingDirectory = $ExecutionContext.InvokeCommandWithCred.ExpandString($Using:WorkingDirectory);
-                }
-              }
-              $ps_startInfo.UseShellExecute = $false; # This is critical for installs to function on core servers
-              $ps.StartInfo = $ps_startInfo;
-              $verbose ? (Write-Console "Starting Process path [$($ps_startInfo.FileName)] - Args: [$($ps_startInfo.Arguments)] - Working dir: [$($Using:WorkingDirectory)]" -f LemonChiffon) : $null
-              $null = $ps.Start();
-              if (!$ps) {
-                throw "Error running program: $($ps.ExitCode)"
-              } else {
-                $ps.WaitForExit()
-              }
-              # Check the exit code of the process to see if it succeeded.
-              if ($ps.ExitCode -notin $Using:SuccessReturnCodes) {
-                throw "Error running program: $($ps.ExitCode)"
+          $verbose ? (Write-Console "Running command line [$FilePath $ArgumentList] on $ComputerName" -f LemonChiffon) : $null
+          Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+            $VerbosePreference = $using:VerbosePreference
+            $WhatIfPreference = $using:WhatIfPreference
+            $ps = [System.Diagnostics.Process]::new()
+            $ps_startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+            $ps_startInfo.FileName = $Using:FilePath;
+            if ($Using:ArgumentList) {
+              $ps_startInfo.Arguments = $Using:ArgumentList;
+              if ($Using:ExpandStrings) {
+                $ps_startInfo.Arguments = $ExecutionContext.InvokeCommandWithCred.ExpandString($Using:ArgumentList);
               }
             }
-            $Result.IsSuccess = [bool]$?
-          } catch {
-            $Result.IsSuccess = $false
-            $Result.ErrorRecord = $_.Exception.ErrorRecord
-            $verbose ? (Write-Console "$fxn Errored: $($_.CategoryInfo.Category) : $($_.CategoryInfo.Reason) : $($_.Exception.Message)" -f LemonChiffon) : $null
+            if ($Using:WorkingDirectory) {
+              $ps_startInfo.WorkingDirectory = $Using:WorkingDirectory;
+              if ($Using:ExpandStrings) {
+                $ps_startInfo.WorkingDirectory = $ExecutionContext.InvokeCommandWithCred.ExpandString($Using:WorkingDirectory);
+              }
+            }
+            $ps_startInfo.UseShellExecute = $false; # This is critical for installs to function on core servers
+            $ps.StartInfo = $ps_startInfo;
+            $verbose ? (Write-Console "Starting Process path [$($ps_startInfo.FileName)] - Args: [$($ps_startInfo.Arguments)] - Working dir: [$($Using:WorkingDirectory)]" -f LemonChiffon) : $null
+            $null = $ps.Start();
+            if (!$ps) {
+              throw "Error running program: $($ps.ExitCode)"
+            } else {
+              $ps.WaitForExit()
+            }
+            # Check the exit code of the process to see if it succeeded.
+            if ($ps.ExitCode -notin $Using:SuccessReturnCodes) {
+              throw "Error running program: $($ps.ExitCode)"
+            }
           }
         } else {
-          $Result.Output += Invoke-Command -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
-          $Result.IsSuccess = [bool]$?
+          Invoke-Command -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
         }
-      } catch {
-        $Result.IsSuccess = $false
-        $Result.ErrorRecord = [System.Management.Automation.ErrorRecord]$_
-        $verbose ? (Write-Console "$fxn Error after $([math]::Round(($(Get-Date) - $AttemptStartTime).TotalSeconds, 2)) seconds:" -f $cmdColors.Verbose) : $null
-        $verbose ? (Write-Console "   $($_.CategoryInfo.Category) : $($_.CategoryInfo.Reason) : $($_.Exception.Message)" -f $cmdColors.Error) : $null
-      } finally {
-        $Result.ET = [math]::Round(($(Get-Date) - $CommandStartTime).TotalSeconds, 2)
-        [void]$Results.Add($Result)
-        if (!$cancellationToken.IsCancellationRequested -and ($Retries -ne 0) -and !$Result.IsSuccess) {
-          $verbose ? (Write-Console "$fxn Waiting $Timeout ms before retrying. Retries left: $Retries" -f $cmdColors.Verbose) : $null
-          [System.Threading.Thread]::Sleep($Timeout);
-        }
-        $Attempts++
       }
+
+      $Elapsed = [math]::Round(($(Get-Date) - $AttemptStartTime).TotalSeconds, 2)
+      $Results.Add($Result, $Elapsed)
+      
+      if (!$Result.IsOk()) {
+        $verbose ? (Write-Console "$fxn Error after $Elapsed seconds:" -f $cmdColors.Verbose) : $null
+        $err = $Result.UnwrapErr()
+        if ($err -is [System.Management.Automation.ErrorRecord]) {
+          $verbose ? (Write-Console "   $($err.CategoryInfo.Category) : $($err.CategoryInfo.Reason) : $($err.Exception.Message)" -f $cmdColors.Error) : $null
+        } else {
+          $verbose ? (Write-Console "   $err" -f $cmdColors.Error) : $null
+        }
+      }
+
+      if (!$Result.IsOk() -and ($Retries -gt 0) -and !$cancellationToken.IsCancellationRequested) {
+        $verbose ? (Write-Console "$fxn Waiting $Timeout ms before retrying. Retries left: $Retries" -f $cmdColors.Verbose) : $null
+        Start-Sleep -Milliseconds $Timeout
+      }
+      $Attempts++
     }
   }
 

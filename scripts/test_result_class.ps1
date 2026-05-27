@@ -214,3 +214,22 @@ $apiKey.Match(
   { param($k) Write-Host "API key loaded: $k" },
   { param($e) Write-Host "Config error: $e" -ForegroundColor Red }
 )
+
+# ═══════════════════════════════════════════════════════════════════
+#  15. RESULTS CLASS (Aggregating multiple Result instances)
+# ═══════════════════════════════════════════════════════════════════
+
+$batch = [Results]::new()
+
+# Simulate a few attempts
+$batch.Add([Result]::Err("Timeout 1"), 0.5)
+$batch.Add([Result]::Err("Timeout 2"), 0.8)
+$batch.Add([Result]::Ok("Success on 3rd try"), 1.2)
+
+Write-Host "`nBatch status:"
+Write-Host "  Success:      $($batch.IsSuccess)"
+Write-Host "  Has Errors:   $($batch.HasErrors)"
+Write-Host "  Total Time:   $($batch.ElapsedTime)s"
+Write-Host "  Final Output: $($batch.Output -join ', ')"
+Write-Host "  Errors:       $($batch.Errors -join ' | ')"
+

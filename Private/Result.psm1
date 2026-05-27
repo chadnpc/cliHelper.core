@@ -364,3 +364,42 @@ class Result {
     return "Err($inner)"
   }
 }
+
+class Results {
+  hidden [System.Collections.Generic.List[object]] $_items
+  [double]$ElapsedTime
+  [bool]$IsSuccess
+  [bool]$HasErrors
+  [object[]]$Output
+  [object[]]$Errors
+  [int]$Count
+
+  Results() {
+    $this._items = [System.Collections.Generic.List[object]]::new()
+    $this.ElapsedTime = 0
+    $this.IsSuccess = $false
+    $this.HasErrors = $false
+    $this.Output = @()
+    $this.Errors = @()
+    $this.Count = 0
+  }
+
+  [void] Add([Result]$result, [double]$elapsedTime) {
+    $this._items.Add([PSCustomObject]@{ Result = $result; ElapsedTime = $elapsedTime })
+    $this.ElapsedTime = [math]::Round($this.ElapsedTime + $elapsedTime, 2)
+    
+    if ($result.IsOk()) {
+      $this.IsSuccess = $true
+      $val = $result.Unwrap()
+      if ($null -ne $val) {
+        if ($val -is [array]) { $this.Output += $val }
+        else { $this.Output += @($val) }
+      }
+    }
+    else {
+      $this.HasErrors = $true
+      $this.Errors += @($result.UnwrapErr())
+    }
+    $this.Count = $this._items.Count
+  }
+}
