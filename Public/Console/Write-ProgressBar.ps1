@@ -1,4 +1,4 @@
-﻿function Write-ProgressBar {
+function Write-ProgressBar {
   # .SYNOPSIS
   #     Writes the status progress of activities.
   # .DESCRIPTION
@@ -18,15 +18,24 @@
   # .OUTPUTS
   #     [string]
   # .LINK
-  [CmdletBinding()]
+  [CmdletBinding(DefaultParameterSetName = 'ByPercent')]
   param (
-    [Parameter(Mandatory = $true, Position = 0)]
+    [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'ByPercent')]
     [Alias('p')]
     [int]$percent,
 
-    [Parameter(Mandatory = $true, Position = 1)]
+    [Parameter(Mandatory = $false, ParameterSetName = 'ByPercent')]
     [Alias('l')]
-    [int]$PBLength,
+    [int]$PBLength = 100,
+
+    [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'ByCount')]
+    [int]$Completed,
+
+    [Parameter(Mandatory = $true, Position = 1, ParameterSetName = 'ByCount')]
+    [int]$OutOf,
+
+    [Parameter(Mandatory = $false)]
+    [string]$Activity,
 
     [Parameter(Mandatory = $false)]
     [string]$CurrentOperation,
@@ -36,6 +45,10 @@
   )
 
   end {
-    [ProgressUtil]::WriteProgressBar($percent, $update.IsPresent, $PBLength, $CurrentOperation);
+    if ($PSCmdlet.ParameterSetName -eq 'ByCount') {
+      $percent = if ($OutOf -gt 0) { [int](($Completed / $OutOf) * 100) } else { 0 }
+      $PBLength = 100
+    }
+    [ProgressUtil]::WriteProgressBar($percent, $update.IsPresent, $PBLength, $CurrentOperation)
   }
 }
