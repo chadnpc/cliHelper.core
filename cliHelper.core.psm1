@@ -38,7 +38,6 @@ using module Private\Capstone.psm1
 using module Private\COMInterop.psm1
 using module Private\Config.psm1
 using module Private\Connectivity.psm1
-using module Private\Runner.psm1
 using module Private\Console.psm1
 using module Private\DllUtils.psm1
 using module Private\DNS.psm1
@@ -55,6 +54,8 @@ using module Private\Models.psm1
 using module Private\MotdGen.psm1
 using module Private\Network.psm1
 using module Private\Proxy.psm1
+using module Private\Result.psm1
+using module Private\Runner.psm1
 using module Private\Security.psm1
 using module Private\Utilities.psm1
 using module Private\WebTools.psm1
