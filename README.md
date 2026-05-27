@@ -47,6 +47,27 @@ Import-Module cliHelper.core
 .\scripts\run_demo.ps1 -Verbose:$false
 ```
 
+
+other examples:
+
+
+```powershell
+[Emoji]::Replace('Deploy :rocket: status :white_check_mark:')
+# Deploy 🚀 status ✅
+```
+
+Objects preview/rendering:
+
+```powershell
+$data = [ordered]@{
+  service = 'api'
+  healthy = $true
+  latency = 24
+}
+
+[AnsiConsole]::Console.Write([JsonText]::new($data))
+```
+
 <!--
 https://github.com/user-attachments/assets/2a8c8688-2483-4a44-8801-37fde5016306
 -->

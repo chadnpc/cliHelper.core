@@ -1,34 +1,41 @@
 ﻿Import-Module .\cliHelper.core.psd1 -Verbose:$false -Force
 # [ConsoleHelper].GetMethods().Where({ $_.IsStatic -and $_.Name.StartsWith("Demo") }).Name
-$failed = $false
-try {
-  [ConsoleHelper]::DemoMarkup()
-  [ConsoleHelper]::DemoTextandMarkup()
-  [ConsoleHelper]::DemoPanelsRulesandAlignment()
-  [ConsoleHelper]::DemoTables()
-  [ConsoleHelper]::DemoRowsColumnsandGrid()
-  [ConsoleHelper]::DemoTreeRendering()
-  [ConsoleHelper]::DemoJSONRendering()
-  [ConsoleHelper]::DemoChartsandCalendar()
-  [ConsoleHelper]::DemoProgress()
-  [ConsoleHelper]::DemoFigletText()
-  [ConsoleHelper]::DemoSearchableListPrompt()
-  [ConsoleHelper]::DemoAnsiInThreadrunner()
-  [ConsoleHelper]::DemoFailingTaskInThreadrunner()
-  [ConsoleHelper]::DemoStatus() # failing - crashing
-  [ConsoleHelper]::DemoTextPrompt()
-  [ConsoleHelper]::DemoConfirmPrompt()
-  [ConsoleHelper]::DemoSelectionPrompt()
-  [ConsoleHelper]::DemoMultiSelectionPrompt()
-  [ConsoleHelper]::DemoCliArt()
-} catch {
-  $failed = $true
-  Write-Host "An error occurred. (Message: $($_.Exception.Message))" -ForegroundColor Red
-} finally {
-  if ($failed) {
-    Write-Host "The command failed." -ForegroundColor Red
-    $Error[0] | Format-List * -Force
-  } else {
-    Write-Host "Commands completed successfully." -ForegroundColor Green
-  }
+$demos = @{
+  DemoMarkup                    = "Markup rendering"
+  DemoTextandMarkup             = "Detect text and Markup"
+  DemoPanelsRulesandAlignment   = "Panels, Rules, and Alignment."
+  DemoTables                    = "Tables."
+  DemoRowsColumnsandGrid        = "Rows, Columns, and Grid."
+  DemoTreeRendering             = "Tree Rendering."
+  DemoJSONRendering             = "JSON preview/rendering."
+  DemoChartsandCalendar         = "Charts and Calendar."
+  DemoProgress                  = "Animated Progress."
+  DemoFigletText                = "FigletText Placeholder."
+  DemoSearchableListPrompt      = "Searchable Interactive ListPrompt."
+  DemoAnsiInThreadrunner        = "Ansi color ouptut in Threadrunner"
+  DemoFailingTaskInThreadrunner = "How threadrunner handles failing tasks"
+  # DemoStatus                    = "Status with Spinner." # failing - crashing
+  DemoTextPrompt                = "Text Prompt"
+  DemoConfirmPrompt             = "Confirmation Prompt"
+  DemoSelectionPrompt           = "Selection Prompt"
+  DemoMultiSelectionPrompt      = "MultiSelection Prompt"
+  DemoCliArt                    = "CliArt"
 }
+$demos.Keys.ForEach({
+    Write-Console "[+] " -NoNewLine; Write-Console $demos[$_] -f LimeGreen
+    $failed = $false
+    try {
+      [ConsoleHelper]::$_()
+    } catch {
+      $failed = $true
+      Write-Host "An error occurred. (Message: $($_.Exception.Message))" -ForegroundColor Red
+    } finally {
+      if ($failed) {
+        Write-Host "The command failed." -ForegroundColor Red
+        $Error[0] | Format-List * -Force
+      } else {
+        Write-Host "Commands completed successfully." -ForegroundColor Green
+      }
+    }
+  }
+)
