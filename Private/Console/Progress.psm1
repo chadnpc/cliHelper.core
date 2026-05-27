@@ -140,15 +140,15 @@ class ProgressTask {
   }
 }
 
-class ProgressLiveSessionSettings : PsRecord {
+class ProgressConfig : PsRecord {
   $ShowProgress = { return (Get-Variable 'VerbosePreference' -ValueOnly) -eq 'Continue' }
   $ProgressBarColor = "LightSeaGreen"
   $ProgressMsgColor = "LightGoldenrodYellow"
   $ProgressBlock = '■'
-  ProgressLiveSessionSettings() : base() {}
-  ProgressLiveSessionSettings($hashtable): base($hashtable) {
+  ProgressConfig() : base() {}
+  ProgressConfig($hashtable): base($hashtable) {
   }
-  ProgressLiveSessionSettings([hashtable[]]$array): base($array) {
+  ProgressConfig([hashtable[]]$array): base($array) {
   }
 }
 
@@ -475,7 +475,7 @@ class ProgressLiveSession {
   [int]$Frame
   [DateTime]$LastUpdate
   [string[]]$LastLines
-  [ProgressLiveSessionSettings]$settings
+  [ProgressConfig]$settings = @{}
 
   ProgressLiveSession([Progress]$owner, [ProgressContext]$context, [LiveDisplayRegion]$display) {
     $this.Owner = $owner
@@ -585,13 +585,21 @@ class Progress {
       $display.Complete($this.session.LastLines)
     }
   }
-
   hidden [int] GetRenderWidth() {
     try {
       return [Math]::Max(40, [Console]::WindowWidth - 1)
     } catch {
       return 80
     }
+  }
+  [void] SetProgressConfig($Config) {
+    $this.SetProgressConfig([ProgressConfig]::new($Config))
+  }
+  [void] SetProgressConfig([ProgressConfig]$Config) {
+    if ($null -eq $this.session) {
+      throw "Create a progress LiveSession first"
+    }
+    $this.session.settings = $Config
   }
 
   static [Task[]] RunConcurrently([ScriptBlock[]]$workItems) {
