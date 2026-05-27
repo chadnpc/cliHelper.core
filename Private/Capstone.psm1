@@ -9,8 +9,8 @@ class Capstone {
     }
 
     if ($null -eq $Architecture -or $null -eq $Mode) {
-        $Architecture = ([type]'Capstone.Architecture')::X86
-        $Mode = ([type]'Capstone.Mode')::Mode16
+      $Architecture = ([type]'Capstone.Architecture')::X86
+      $Mode = ([type]'Capstone.Mode')::Mode16
     }
 
     $Disassembly = New-Object Capstone.Capstone($Architecture, $Mode)
@@ -41,16 +41,14 @@ class Capstone {
   static [object] ILDisassemble([object]$MethodInfo, [string]$AssemblyPath, [long]$MetadataToken, [object]$MethodDef) {
     $Method = $null
     if ($null -ne $AssemblyPath) {
-        $FullPath = Resolve-Path $AssemblyPath
-        $Module = ([type]'dnlib.DotNet.ModuleDefMD')::Load($FullPath.Path)
-        $Method = $Module.ResolveMethod(($MetadataToken -band 0xFFFFFF))
-    }
-    elseif ($null -ne $MethodInfo) {
-        $Module = ([type]'dnlib.DotNet.ModuleDefMD')::Load($MethodInfo.Module)
-        $Method = $Module.ResolveMethod(($MethodInfo.MetadataToken -band 0xFFFFFF))
-    }
-    elseif ($null -ne $MethodDef) {
-        $Method = $MethodDef
+      $FullPath = Resolve-Path $AssemblyPath
+      $Module = ([type]'dnlib.DotNet.ModuleDefMD')::Load($FullPath.Path)
+      $Method = $Module.ResolveMethod(($MetadataToken -band 0xFFFFFF))
+    } elseif ($null -ne $MethodInfo) {
+      $Module = ([type]'dnlib.DotNet.ModuleDefMD')::Load($MethodInfo.Module)
+      $Method = $Module.ResolveMethod(($MethodInfo.MetadataToken -band 0xFFFFFF))
+    } elseif ($null -ne $MethodDef) {
+      $Method = $MethodDef
     }
 
     if ($null -ne $Method -and $Method.HasBody) {
