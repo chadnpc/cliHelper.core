@@ -3,6 +3,7 @@ using namespace System.Collections.Generic
 using namespace System.Threading
 using namespace System.Threading.Tasks
 
+using module ..\Models.psm1
 using module .\Colors.psm1
 using module .\Rendering.psm1
 using module .\Ansi.psm1
@@ -137,6 +138,13 @@ class ProgressTask {
     }
     $this.TriggerUpdate()
   }
+}
+
+class ProgressSessionSettings : PsRecord {
+  $ShowProgress = { return (Get-Variable 'VerbosePreference' -ValueOnly) -eq 'Continue' }
+  $ProgressBarColor = "LightSeaGreen"
+  $ProgressMsgColor = "LightGoldenrodYellow"
+  $ProgressBlock = '■'
 }
 
 class ProgressTaskSettings {
