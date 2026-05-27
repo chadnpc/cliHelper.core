@@ -58,6 +58,7 @@ try {
   Add-Type -TypeDefinition $attachmentTypeDefinition -ErrorAction SilentlyContinue
 } catch {
   # Type may already be defined in the session.
+  $null
 }
 
 # Helper class that wraps the IAttachmentExecute COM API
