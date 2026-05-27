@@ -68,9 +68,16 @@ $data = [ordered]@{
 [AnsiConsole]::Console.Write([JsonText]::new($data))
 ```
 
-<!--
-https://github.com/user-attachments/assets/2a8c8688-2483-4a44-8801-37fde5016306
--->
+## requirements
+
+- PowerShell 7.0 or higher
+- UTF8 encoding in your terminal/PowerShell session
+
+  Add this to your `$Profile`:
+
+  ```PowerShell
+  $OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
+  ```
 
 ## development
 
