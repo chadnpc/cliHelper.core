@@ -109,14 +109,13 @@
         Verbose                = $use_verbose
         Caller                 = $caller
       }
-      $result = Invoke-RetriableCommand @SplatParams
-    }
-    catch {
+      $results = Invoke-RetriableCommand @SplatParams
+    } catch {
       throw $_
     }
   }
 
   end {
-    return $result.Output
+    return $results.Output
   }
 }

@@ -161,9 +161,9 @@ function Invoke-RetriableCommand {
     while (($Attempts -le $MaxAttempts) -and !$Results.IsSuccess) {
       $AttemptStartTime = Get-Date; $Retries = $MaxAttempts - $Attempts
       if ($cancellationToken.IsCancellationRequested) { $verbose ? (Write-Console "$fxn CancellationRequested when $Retries retries were left." -f $cmdColors.Verbose) : $null; throw }
-      
+
       $verbose ? (Write-Console "$fxn Attempt # $Attempts/$MaxAttempts ..." -f $cmdColors.Progress) : $null
-      
+
       $Result = Invoke-Safely {
         if ($PSCmdlet.ParameterSetName -eq 'Command') {
           $verbose ? (Write-Console "Running command line [$FilePath $ArgumentList] on $ComputerName" -f LemonChiffon) : $null
@@ -206,7 +206,7 @@ function Invoke-RetriableCommand {
 
       $Elapsed = [math]::Round(($(Get-Date) - $AttemptStartTime).TotalSeconds, 2)
       $Results.Add($Result, $Elapsed)
-      
+
       if (!$Result.IsOk()) {
         $verbose ? (Write-Console "$fxn Error after $Elapsed seconds:" -f $cmdColors.Verbose) : $null
         $err = $Result.UnwrapErr()

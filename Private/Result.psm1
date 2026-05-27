@@ -385,9 +385,13 @@ class Results {
   }
 
   [void] Add([Result]$result, [double]$elapsedTime) {
-    $this._items.Add([PSCustomObject]@{ Result = $result; ElapsedTime = $elapsedTime })
+    $this._items.Add([PSCustomObject]@{
+        Result      = $result
+        ElapsedTime = $elapsedTime
+      }
+    )
     $this.ElapsedTime = [math]::Round($this.ElapsedTime + $elapsedTime, 2)
-    
+
     if ($result.IsOk()) {
       $this.IsSuccess = $true
       $val = $result.Unwrap()
@@ -395,8 +399,7 @@ class Results {
         if ($val -is [array]) { $this.Output += $val }
         else { $this.Output += @($val) }
       }
-    }
-    else {
+    } else {
       $this.HasErrors = $true
       $this.Errors += @($result.UnwrapErr())
     }
