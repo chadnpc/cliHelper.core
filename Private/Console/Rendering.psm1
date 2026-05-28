@@ -172,17 +172,18 @@ class Segment {
     )
   }
   static [List[SegmentLine]] SplitLines([Segment[]]$segments, [int]$maxWidth) {
-    return [Segment]::SplitLines([IEnumerable[segment]]$segments, $maxWidth)
+    return [Segment]::SplitLines((, $segments), $maxWidth)
   }
   static [List[SegmentLine]] SplitLines([IEnumerable]$segments, [int]$maxWidth) {
+    [Segment[]]$segmentsArr = $segments.ForEach({ $_ })
+    $list = [List[segment]]::new(); $segmentsArr.ForEach({ $list.Add([Segment]$_) })
     $lines = [List[SegmentLine]]::new()
     $currentLine = [SegmentLine]::new()
-    $stack = [Stack[Segment]]::new(([List[Segment]]::new($segments)))
-    # Reverse stack because we pop from top
-    $list = [List[Segment]]::new($segments)
-    $list.Reverse()
-    $stack = [Stack[Segment]]::new($list)
+    $stack = [Stack]::new($list)
 
+    # Reverse stack because we pop from top
+    $list.Reverse()
+    $stack = [Stack]::new($list)
     while ($stack.Count -gt 0) {
       $segment = $stack.Pop()
       $segmentLength = $segment.CellCount()
