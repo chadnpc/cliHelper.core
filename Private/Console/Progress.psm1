@@ -432,11 +432,8 @@ class ProgressBarRenderable : IRenderable {
     $this.FinishedStyle = $finishedStyle
   }
 
-  [Object[]] Render($options, [int]$maxWidth) {
-    return $this.Render([ProgressConfig]$options, $maxWidth)
-  }
-  [object[]] Render([ProgressConfig]$options, [int]$maxWidth) {
-    [ValidateNotNullOrEmpty()][ProgressConfig]$options = $options
+  [object[]] Render($options, [int]$maxWidth) {
+    [ValidateNotNull()][ProgressConfig]$options = $options
     $segs = [List[Segment]]::new()
     $safeWidth = [Math]::Min($this.Width, $maxWidth)
 
@@ -473,10 +470,7 @@ class ProgressRenderable : IRenderable {
   }
 
   [object[]] Render($options, [int]$maxWidth) {
-    return $this.Render([ProgressConfig]$options, $maxWidth)
-  }
-  [object[]] Render([ProgressConfig]$options, [int]$maxWidth) {
-    [ValidateNotNullOrEmpty()][ProgressConfig]$options = $options
+    [ValidateNotNull()][ProgressConfig]$options = $options
     $tasks = $this.Context.GetTasks()
     $grid = [Grid]::new()
 
