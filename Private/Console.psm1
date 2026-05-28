@@ -149,6 +149,7 @@ class ConsoleHelper {
     $console = [AnsiConsole]::Console
     $progress = [Progress]::new($console)
     $progress.RefreshRateMs = 80
+    # $progress.Config = @{}
 
     $progress.Start([Action[ProgressContext]] {
         param([ProgressContext]$ctx)
