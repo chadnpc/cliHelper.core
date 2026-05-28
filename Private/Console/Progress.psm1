@@ -3,7 +3,7 @@ using namespace System.Collections.Generic
 using namespace System.Threading
 using namespace System.Threading.Tasks
 
-using module ..\Models.psm1
+using module ..\Enums.psm1
 using module .\Colors.psm1
 using module .\Rendering.psm1
 using module .\Ansi.psm1
@@ -427,7 +427,7 @@ class ProgressBarRenderable : IRenderable {
   }
 
   [object[]] Render($options, [int]$maxWidth) {
-    $progOptions = [ProgressRenderOptions]$options
+    [ValidateNotNullOrEmpty()][ProgressRenderOptions]$options = $options
     $segs = [List[Segment]]::new()
     $safeWidth = [Math]::Min($this.Width, $maxWidth)
 
