@@ -50,7 +50,6 @@ using module Private\FTP.psm1
 using module Private\Geolocation.psm1
 using module Private\HelpTools.psm1
 using module Private\IPManagement.psm1
-using module Private\Models.psm1
 using module Private\MotdGen.psm1
 using module Private\Network.psm1
 using module Private\Proxy.psm1
