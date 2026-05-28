@@ -606,7 +606,10 @@ class Progress {
     $this.session = [ProgressLiveSession]::new([Progress]$this, $context, $display)
 
     # Render synchronously on task updates to avoid PowerShell runspace deadlocks.
-    $context.OnUpdate = [Action] { $this.session.Tick($null) }
+    # NOTE: $this is NOT available inside a [Action]/scriptblock closure in PowerShell
+    # classes — capture the session reference in a local variable first.
+    $liveSession = $this.session
+    $context.OnUpdate = [Action] { $liveSession.Tick($null) }
 
     try {
       $this.session.Tick($null) # Initial render
