@@ -3,7 +3,7 @@ using namespace System.Net
 using namespace System.Net.NetworkInformation
 using namespace System.Net.Sockets
 
-using module .\Models.psm1
+using module .\Enums.psm1
 using module .\DNS.psm1
 using module .\IPManagement.psm1
 
