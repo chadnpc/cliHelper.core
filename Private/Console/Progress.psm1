@@ -344,7 +344,7 @@ class ProgressColumn {
 class TaskDescriptionColumn : ProgressColumn {
   [Justify]$Alignment = [Justify]::Left
   TaskDescriptionColumn() : base() {}
-  TaskDescriptionColumn([ref]$owner) : base($owner) {}
+  TaskDescriptionColumn([ref]$owner) : base([ref]$owner) {}
 
   [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     $text = if ($null -ne $task.Description) { $task.Description } else { "" }
@@ -360,7 +360,7 @@ class PercentageColumn : ProgressColumn {
   [Style]$CompletedStyle = [Color]::Green
 
   PercentageColumn() : base() {}
-  PercentageColumn([ref]$owner) : base($owner) {}
+  PercentageColumn([ref]$owner) : base([ref]$owner) {}
 
   [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     $pct = $task.Percent()
@@ -378,7 +378,7 @@ class SpinnerColumn : ProgressColumn {
   [string]$PendingText = ' '
 
   SpinnerColumn() : base() {}
-  SpinnerColumn([ref]$owner) : base($owner) {}
+  SpinnerColumn([ref]$owner) : base([ref]$owner) {}
 
   hidden [double]$_accumulated = 0
   hidden [int]$_index = 0
@@ -410,7 +410,7 @@ class ProgressBarColumn : ProgressColumn {
   [Style]$FinishedStyle = [Color]::Green
   [Style]$RemainingStyle = [Color]::Grey
   ProgressBarColumn() : base() {}
-  ProgressBarColumn([ref]$owner) : base($owner) {}
+  ProgressBarColumn([ref]$owner) : base([ref]$owner) {}
 
   [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     return [ProgressBarRenderable]::new($task, $this.Width, $this.CompletedStyle, $this.RemainingStyle, $this.FinishedStyle)
@@ -507,8 +507,8 @@ class ProgressLiveSession {
     $this.Owner = $Owner.Value
     $this.PsObject.Properties.Add([PSscriptProperty]::new("settings", { return $this.Owner.Config }, { param($settings) $this.Owner.Config = ($settings -is [ProgressConfig]) ? $settings : [ProgressConfig]::new($settings) }))
   }
-  ProgressLiveSession([Progress]$Owner, [ProgressContext]$context, [LiveDisplayRegion]$display) {
-    $this.Owner = $Owner
+  ProgressLiveSession([ref]$Owner, [ProgressContext]$context, [LiveDisplayRegion]$display) {
+    $this.Owner = $Owner.Value
     $this.Context = $context
     $this.Display = $display
     $this.PsObject.Properties.Add([PSscriptProperty]::new("settings", { return $this.Owner.Config }, { param($settings) $this.Owner.Config = ($settings -is [ProgressConfig]) ? $settings : [ProgressConfig]::new($settings) }))
@@ -602,7 +602,7 @@ class Progress {
 
   [void] Start([ProgressContext]$context, [Action[ProgressContext]]$action) {
     $display = [LiveDisplayRegion]::new($this.Writer)
-    $this.session = [ProgressLiveSession]::new([ref]$this, $context, $display)
+    $this.session = [ProgressLiveSession]::new($this, $context, $display)
 
     # Render synchronously on task updates to avoid PowerShell runspace deadlocks.
     $context.OnUpdate = [Action] { $this.session.Tick($null) }
