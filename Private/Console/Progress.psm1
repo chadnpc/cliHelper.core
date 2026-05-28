@@ -144,7 +144,7 @@ class ProgressConfig : RenderOptions {
   [RGB]$ProgressBarColor
   [RGB]$ProgressMsgColor
   [string]$ProgressBlock
-  ProgressConfig() : base() {}
+  ProgressConfig() : base() { $this.Reset() }
   ProgressConfig($hashtable) { $this.Reset() }
   ProgressConfig([hashtable[]]$array): base($array) { $this.Reset() }
   [void] Reset() {
@@ -153,10 +153,18 @@ class ProgressConfig : RenderOptions {
     $this.ProgressBlock = '■'
     $this.PsObject.Properties.Add([PSscriptProperty]::new("ShowProgress", { return (Get-Variable 'VerbosePreference' -ValueOnly) -eq 'Continue' }))
   }
+  # Returns [ProgressConfig] but declared as [RenderOptions] to avoid PS class self-referential return type parse error.
+  static [RenderOptions] Create([object]$writer, [object]$capabilities) {
+    $cfg = [ProgressConfig]::new()
+    if ($null -ne $capabilities) {
+      $cfg.ColorSystem = $capabilities.ColorSystem
+      $cfg.Ansi = $capabilities.Ansi
+    }
+    return $cfg
+  }
   [RenderOptions] ToRenderOptions() {
-    # copy all base propertis
+    # copy all base properties
     $o = [RenderOptions]@{}; $o.PsObject.Properties.Name.ForEach({ $o.$_ = $this.$_ })
-    # do other changes here ...
     return $o
   }
 }
@@ -414,7 +422,10 @@ class ProgressBarColumn : ProgressColumn {
   ProgressBarColumn([Progress]$owner) : base($owner) {}
 
   [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
-    return [ProgressBarRenderable]::new($task, $this.Width, $this.CompletedStyle, $this.RemainingStyle, $this.FinishedStyle)
+    $cfg = if ($options -is [ProgressConfig]) { [ProgressConfig]$options } else { $null }
+    $renderable = [ProgressBarRenderable]::new($task, $this.Width, $this.CompletedStyle, $this.RemainingStyle, $this.FinishedStyle)
+    $renderable.Options = $cfg
+    return $renderable
   }
 }
 
@@ -424,6 +435,10 @@ class ProgressBarRenderable : IRenderable {
   [Style]$CompletedStyle
   [Style]$RemainingStyle
   [Style]$FinishedStyle
+  # Stored by ProgressBarColumn.Render() so the ProgressConfig survives the Grid's
+  # generic Render([RenderOptions],int) call contract.
+  # Typed [object] to avoid PowerShell parse-time forward-reference errors.
+  [object]$Options
 
   ProgressBarRenderable([ProgressTaskState]$task, [int]$width, [Style]$completedStyle, [Style]$remainingStyle, [Style]$finishedStyle) {
     $this.Task = $task
@@ -433,10 +448,12 @@ class ProgressBarRenderable : IRenderable {
     $this.FinishedStyle = $finishedStyle
   }
 
-  [object[]] Render($options, [int]$maxWidth) {
-    [ValidateNotNull()][ProgressConfig]$options = $options
+  # Grid calls Render([RenderOptions], int) — we recover ProgressConfig from $this.Options.
+  [object[]] Render([RenderOptions]$options, [int]$maxWidth) {
+    $cfg = if ($null -ne $this.Options) { $this.Options } elseif ($options -is [ProgressConfig]) { [ProgressConfig]$options } else { [ProgressConfig]::new() }
     $segs = [List[Segment]]::new()
     $safeWidth = [Math]::Min($this.Width, $maxWidth)
+    $block = if ($cfg.ProgressBlock) { $cfg.ProgressBlock } else { '■' }
 
     if ($this.Task.IsIndeterminate) {
       $segs.Add([Segment]::new(('.' * $safeWidth), $this.RemainingStyle))
@@ -450,7 +467,7 @@ class ProgressBarRenderable : IRenderable {
     $actualCompStyle = if ($this.Task.IsFinished) { $this.FinishedStyle } else { $this.CompletedStyle }
 
     if ($filledCount -gt 0) {
-      $segs.Add([Segment]::new(($options.ProgressBlock * $filledCount), $actualCompStyle))
+      $segs.Add([Segment]::new(($block * $filledCount), $actualCompStyle))
     }
     if ($emptyCount -gt 0) {
       $segs.Add([Segment]::new(('=' * $emptyCount), $this.RemainingStyle))
@@ -470,13 +487,14 @@ class ProgressRenderable : IRenderable {
     $this.DeltaTime = $deltaTime
   }
 
-  [Segment[]] Render($options, [int]$maxWidth) {
-    [ValidateNotNull()][ProgressConfig]$options = $options
+  [Segment[]] Render([RenderOptions]$options, [int]$maxWidth) {
+    $cfg = if ($options -is [ProgressConfig]) { [ProgressConfig]$options } else { [ProgressConfig]::new() }
     $tasks = $this.Context.GetTasks()
     $grid = [Grid]::new()
+    $renderOpts = $cfg.ToRenderOptions()
 
     for ($i = 0; $i -lt $this.Owner.Columns.Count; $i++) {
-      $colWidth = $this.Owner.Columns[$i].GetColumnWidth($options)
+      $colWidth = $this.Owner.Columns[$i].GetColumnWidth($cfg)
       $col = [GridColumn]::new().PadRight(1)
       if ($null -ne $colWidth) { $col.Width = $colWidth }
       if ($this.Owner.Columns[$i].NoWrap) { [void]$col.NoWrap() }
@@ -487,12 +505,13 @@ class ProgressRenderable : IRenderable {
     foreach ($task in $tasks) {
       $rowRenderables = [List[IRenderable]]::new()
       foreach ($col in $this.Owner.Columns) {
-        $rowRenderables.Add($col.Render($options.ToRenderOptions(), $task, $this.DeltaTime))
+        # Pass $cfg (ProgressConfig) so ProgressBarColumn can forward it to ProgressBarRenderable
+        $rowRenderables.Add($col.Render($cfg, $task, $this.DeltaTime))
       }
       [void]$grid.AddRow($rowRenderables.ToArray())
     }
 
-    return $grid.Render($options.ToRenderOptions(), $maxWidth)
+    return $grid.Render($renderOpts, $maxWidth)
   }
 }
 
