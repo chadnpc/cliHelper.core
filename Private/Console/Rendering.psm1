@@ -196,6 +196,15 @@ class Segment {
     return [Segment]::SplitLines((, $segments), $maxWidth)
   }
   static [List[SegmentLine]] SplitLines([IEnumerable]$segments, [int]$maxWidth) {
+    # CRITICAL BUG FIX PRESERVATION (#4 Array Unrolling & ETS Methods Context Failures):
+    # NEVER use [Segment[]]$segmentsArr = $segments.ForEach({ $_ })
+    # This code may run natively inside threaded [System.Threading.Timer] callbacks (like Progress logic).
+    # Background threads operate without the full PowerShell Extended Type System (ETS) properties mapped.
+    # Therefore, .ForEach({...}) silently binds to the standard .NET List<T>.ForEach(Action<T>) 
+    # instead of the PS Intrinsic collection evaluator, causing the parsing engine to return VOID silently.
+    
+    # We must explicitly type-check and manually unroll 1-layer wrappers (created by the clumsy `(, $segments)` array overload) 
+    # natively without relying on PS implicit multidimensional coercion either!
     $list = [List[Segment]]::new()
     if ($null -ne $segments) {
       foreach ($s in $segments) {
