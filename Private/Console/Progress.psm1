@@ -330,7 +330,7 @@ class ProgressColumn {
   ProgressColumn([ref]$owner) { $this.Owner = $owner.Value }
   [bool] get_NoWrap() { return $true }
   [Nullable[int]] GetColumnWidth([RenderOptions]$options) { return $null }
-  [IRenderable] Render([ProgressRenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
+  [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     throw [NotImplementedException]::new()
   }
 }
@@ -340,7 +340,7 @@ class TaskDescriptionColumn : ProgressColumn {
   TaskDescriptionColumn() : base() {}
   TaskDescriptionColumn([ref]$owner) : base($owner) {}
 
-  [IRenderable] Render([ProgressRenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
+  [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     $text = if ($null -ne $task.Description) { $task.Description } else { "" }
     $m = [Markup]::new($text)
     $m.Overflow = [Overflow]::Ellipsis
@@ -356,7 +356,7 @@ class PercentageColumn : ProgressColumn {
   PercentageColumn() : base() {}
   PercentageColumn([ref]$owner) : base($owner) {}
 
-  [IRenderable] Render([ProgressRenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
+  [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     $pct = $task.Percent()
     $styleToUse = if ($task.IsFinished) { $this.CompletedStyle } else { $this.Style }
     $text = '{0,3:N0}%' -f $pct
@@ -377,7 +377,7 @@ class SpinnerColumn : ProgressColumn {
   hidden [double]$_accumulated = 0
   hidden [int]$_index = 0
 
-  [IRenderable] Render([ProgressRenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
+  [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     if (!$task.IsStarted) {
       return [Markup]::new($this.PendingText, [Style]::Plain)
     }
@@ -406,7 +406,7 @@ class ProgressBarColumn : ProgressColumn {
   ProgressBarColumn() : base() {}
   ProgressBarColumn([ref]$owner) : base($owner) {}
 
-  [IRenderable] Render([ProgressRenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
+  [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     return [ProgressBarRenderable]::new($task, $this.Width, $this.CompletedStyle, $this.RemainingStyle, $this.FinishedStyle)
   }
 }
@@ -426,7 +426,7 @@ class ProgressBarRenderable : IRenderable {
     $this.FinishedStyle = $finishedStyle
   }
 
-  [IEnumerable[Segment]] Render([ProgressRenderOptions]$options, [int]$maxWidth) {
+  [object[]] Render([RenderOptions]$options, [int]$maxWidth) {
     $segs = [List[Segment]]::new()
     $safeWidth = [Math]::Min($this.Width, $maxWidth)
 
@@ -462,7 +462,7 @@ class ProgressRenderable : IRenderable {
     $this.DeltaTime = $deltaTime
   }
 
-  [IEnumerable[Segment]] Render([ProgressRenderOptions]$options, [int]$maxWidth) {
+  [object[]] Render([RenderOptions]$options, [int]$maxWidth) {
     $tasks = $this.Context.GetTasks()
     $grid = [Grid]::new()
 
