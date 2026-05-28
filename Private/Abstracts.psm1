@@ -16,13 +16,10 @@ class Measurement {
 }
 
 class IAnsiConsoleCursor {
-
 }
 class IAnsiConsoleInput {
-
 }
 class IExclusivityMode {
-
 }
 
 class IAnsiConsole {
