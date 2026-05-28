@@ -171,7 +171,9 @@ class Segment {
       [Segment]::new($secondText, $this.Style, $this.IsLineBreak, $this.IsControlCode)
     )
   }
-
+  static [List[SegmentLine]] SplitLines([Segment[]]$segments, [int]$maxWidth) {
+    return [Segment]::SplitLines([IEnumerable[segment]]$segments, $maxWidth)
+  }
   static [List[SegmentLine]] SplitLines([IEnumerable]$segments, [int]$maxWidth) {
     $lines = [List[SegmentLine]]::new()
     $currentLine = [SegmentLine]::new()
