@@ -426,7 +426,8 @@ class ProgressBarRenderable : IRenderable {
     $this.FinishedStyle = $finishedStyle
   }
 
-  [object[]] Render([RenderOptions]$options, [int]$maxWidth) {
+  [object[]] Render($options, [int]$maxWidth) {
+    $progOptions = [ProgressRenderOptions]$options
     $segs = [List[Segment]]::new()
     $safeWidth = [Math]::Min($this.Width, $maxWidth)
 
@@ -462,7 +463,8 @@ class ProgressRenderable : IRenderable {
     $this.DeltaTime = $deltaTime
   }
 
-  [object[]] Render([RenderOptions]$options, [int]$maxWidth) {
+  [object[]] Render($options, [int]$maxWidth) {
+    $progOptions = [ProgressRenderOptions]$options
     $tasks = $this.Context.GetTasks()
     $grid = [Grid]::new()
 
@@ -478,7 +480,7 @@ class ProgressRenderable : IRenderable {
     foreach ($task in $tasks) {
       $rowRenderables = [List[IRenderable]]::new()
       foreach ($col in $this.Owner.Columns) {
-        $rowRenderables.Add($col.Render($options, $task, $this.DeltaTime))
+        $rowRenderables.Add($col.Render($progOptions, $task, $this.DeltaTime))
       }
       [void]$grid.AddRow($rowRenderables.ToArray())
     }
