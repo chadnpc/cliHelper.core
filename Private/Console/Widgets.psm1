@@ -289,17 +289,17 @@ class Align : IRenderable {
   }
 
   [Measurement] Measure([RenderOptions]$options, [int]$maxWidth) {
-    $targetWidth = if ($null -ne $this.Width) { [Math]::Min($this.Width.Value, $maxWidth) } else { $maxWidth }
+    $targetWidth = if ($null -ne $this.Width) { [Math]::Min([int]$this.Width, $maxWidth) } else { $maxWidth }
     $measurement = $this._renderable.Measure($options, $targetWidth)
     return [Measurement]::new([Math]::Min($measurement.Min, $targetWidth), $targetWidth)
   }
 
   [object[]] Render([RenderOptions]$options, [int]$maxWidth) {
-    $targetWidth = if ($null -ne $this.Width) { [Math]::Min($this.Width.Value, $maxWidth) } else { $maxWidth }
+    $targetWidth = if ($null -ne $this.Width) { [Math]::Min([int]$this.Width, $maxWidth) } else { $maxWidth }
     $rendered = $this._renderable.Render($options, $targetWidth)
     $lines = [Segment]::SplitLines($rendered, $targetWidth)
 
-    $targetHeight = if ($null -ne $this.Height) { $this.Height.Value } elseif ($null -ne $options.Height) { $options.Height.Value } else { $null }
+    $targetHeight = if ($null -ne $this.Height) { $this.Height } elseif ($null -ne $options.Height) { $options.Height } else { $null }
     $blank = [SegmentLine]::new([Segment[]]@([Segment]::new(" " * $targetWidth)))
 
     if ($null -ne $this.Vertical -and $null -ne $targetHeight) {
@@ -550,7 +550,7 @@ class Panel : IRenderable {
     $childWidth = $child.Measure($options, $maxWidth - $edgeWidth)
 
     if ($null -ne $this.Width) {
-      $w = $this.Width.Value - $edgeWidth
+      $w = $this.Width - $edgeWidth
       $constrained = [Math]::Min($w, $maxWidth - $edgeWidth)
       $childWidth = [Measurement]::new([Math]::Min($childWidth.Min, $constrained), $constrained)
     }
@@ -570,8 +570,8 @@ class Panel : IRenderable {
     $panelWidth = if (!$this.Expand) { [Math]::Min($measure.Max, $maxWidth) } else { $maxWidth }
     $innerWidth = $panelWidth - $edgeWidth
 
-    $targetHeight = if ($null -ne $this.Height) { $this.Height.Value - 2 } elseif ($null -ne $options.Height) { $options.Height.Value - 2 } else { $null }
-    if (!$this.Expand -and $null -ne $this.Height) { $targetHeight = $this.Height.Value - 2 }
+    $targetHeight = if ($null -ne $this.Height) { $this.Height - 2 } elseif ($null -ne $options.Height) { $options.Height - 2 } else { $null }
+    if (!$this.Expand -and $null -ne $this.Height) { $targetHeight = $this.Height - 2 }
 
     $result = [List[Segment]]::new()
 
