@@ -78,7 +78,7 @@ class Table : IRenderable {
 
     $nonCol = $measurer.GetNonColumnWidth()
     $minTableWidth = $min + $nonCol
-    $maxTableWidth = if ($null -ne $this.Width) { $this.Width.Value } else { $max + $nonCol }
+    $maxTableWidth = if ($null -ne $this.Width) { $this.Width } else { $max + $nonCol }
 
     return [Measurement]::new($minTableWidth, $maxTableWidth)
   }
