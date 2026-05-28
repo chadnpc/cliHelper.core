@@ -321,13 +321,19 @@ class ConsoleResolver {
 }
 
 class ProgressColumn {
+  [Progress]$Owner
+  ProgressColumn([ref]$owner) { $this.Owner = $owner.Value }
   [bool] get_NoWrap() { return $true }
   [Nullable[int]] GetColumnWidth([RenderOptions]$options) { return $null }
-  [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) { throw [NotImplementedException]::new() }
+  [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
+    throw [NotImplementedException]::new()
+  }
 }
 
 class TaskDescriptionColumn : ProgressColumn {
   [Justify]$Alignment = [Justify]::Left
+  TaskDescriptionColumn() : base() {}
+  TaskDescriptionColumn([ref]$owner) : base($owner) {}
 
   [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     $text = if ($null -ne $task.Description) { $task.Description } else { "" }
@@ -341,6 +347,9 @@ class TaskDescriptionColumn : ProgressColumn {
 class PercentageColumn : ProgressColumn {
   [Style]$Style = [Color]::Green
   [Style]$CompletedStyle = [Color]::Green
+
+  PercentageColumn() : base() {}
+  PercentageColumn([ref]$owner) : base($owner) {}
 
   [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     $pct = $task.Percent()
@@ -356,6 +365,9 @@ class SpinnerColumn : ProgressColumn {
   [Style]$CompletedStyle = [Style]::Plain
   [string]$CompletedText = ''
   [string]$PendingText = ' '
+
+  SpinnerColumn() : base() {}
+  SpinnerColumn([ref]$owner) : base($owner) {}
 
   hidden [double]$_accumulated = 0
   hidden [int]$_index = 0
@@ -386,6 +398,8 @@ class ProgressBarColumn : ProgressColumn {
   [Style]$CompletedStyle = [Color]::Green
   [Style]$FinishedStyle = [Color]::Green
   [Style]$RemainingStyle = [Color]::Grey
+  ProgressBarColumn() : base() {}
+  ProgressBarColumn([ref]$owner) : base($owner) {}
 
   [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     return [ProgressBarRenderable]::new($task, $this.Width, $this.CompletedStyle, $this.RemainingStyle, $this.FinishedStyle)
@@ -475,15 +489,16 @@ class ProgressLiveSession {
   [int]$Frame = 0
   [DateTime]$LastUpdate = [DateTime]::UtcNow
   [string[]]$LastLines = [string[]]@()
-  [ProgressConfig]$settings = @{}
 
   ProgressLiveSession([Progress]$owner) {
     $this.Owner = $owner
+    $this.PsObject.Properties.Add([PSscriptProperty]::new("settings", { return $this.Owner.Config }, { param($settings) $this.Owner.Config = ($settings -is [ProgressConfig]) ? $settings : [ProgressConfig]::new($settings) }))
   }
   ProgressLiveSession([Progress]$owner, [ProgressContext]$context, [LiveDisplayRegion]$display) {
     $this.Owner = $owner
     $this.Context = $context
     $this.Display = $display
+    $this.PsObject.Properties.Add([PSscriptProperty]::new("settings", { return $this.Owner.Config }, { param($settings) $this.Owner.Config = ($settings -is [ProgressConfig]) ? $settings : [ProgressConfig]::new($settings) }))
   }
 
   [void] Tick([object]$state) {
@@ -536,6 +551,7 @@ class Progress {
   [int]$RefreshRateMs = 100
   [List[ProgressColumn]]$Columns
   [ProgressLiveSession]$Session
+  [ProgressConfig]$Config = @{}
 
   Progress([AnsiWriter]$writer) {
     $this.Initialize($writer)
@@ -552,23 +568,14 @@ class Progress {
   [void] Initialize([AnsiWriter]$Writer) {
     $this.Writer = $Writer
     $this.InitializeColumns()
-    [scriptblock]$config_getterScript = {
-      return $this.Session.settings
-    }
-    [scriptblock]$config_setterScript = {
-      [OutputType([ProgressConfig])]
-      param($Config)
-      $this.Session.settings = ($Config -is [ProgressConfig]) ? $Config : [ProgressConfig]::new($Config)
-    }
-    $this.PsObject.Properties.Add([PSscriptProperty]::new("Config", $config_getterScript, $config_setterScript))
   }
 
   hidden [void] InitializeColumns() {
     $this.Columns = [List[ProgressColumn]]::new()
-    $this.Columns.Add([TaskDescriptionColumn]::new())
-    $this.Columns.Add([ProgressBarColumn]::new())
-    $this.Columns.Add([PercentageColumn]::new())
-    $this.Columns.Add([SpinnerColumn]::new())
+    $this.Columns.Add([TaskDescriptionColumn]::new([ref]$this))
+    $this.Columns.Add([ProgressBarColumn]::new([ref]$this))
+    $this.Columns.Add([PercentageColumn]::new([ref]$this))
+    $this.Columns.Add([SpinnerColumn]::new([ref]$this))
   }
   [void] Columns([ProgressColumn[]]$columns) {
     $this.Columns.Clear()
