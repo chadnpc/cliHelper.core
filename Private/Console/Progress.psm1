@@ -365,8 +365,8 @@ class TaskDescriptionColumn : ProgressColumn {
 }
 
 class PercentageColumn : ProgressColumn {
-  [Style]$Style = [Color]::Green
-  [Style]$CompletedStyle = [Color]::Green
+  [Style]$Style = [Style]::Parse("green")
+  [Style]$CompletedStyle = [Style]::Parse("green")
 
   PercentageColumn() : base() {}
   PercentageColumn([Progress]$owner) : base($owner) {}
@@ -381,7 +381,7 @@ class PercentageColumn : ProgressColumn {
 
 class SpinnerColumn : ProgressColumn {
   [Spinner]$Spinner = [SpinnerKnown]::Default
-  [Style]$Style = [Color]::Yellow
+  [Style]$Style = [Style]::Parse("yellow")
   [Style]$CompletedStyle = [Style]::Plain
   [string]$CompletedText = ''
   [string]$PendingText = ' '
@@ -415,9 +415,9 @@ class SpinnerColumn : ProgressColumn {
 
 class ProgressBarColumn : ProgressColumn {
   [int]$Width = 40
-  [Style]$CompletedStyle = [Color]::Green
-  [Style]$FinishedStyle = [Color]::Green
-  [Style]$RemainingStyle = [Color]::Grey
+  [Style]$CompletedStyle = [Style]::Parse("green")
+  [Style]$FinishedStyle = [Style]::Parse("green")
+  [Style]$RemainingStyle = [Style]::Parse("grey")
   ProgressBarColumn() : base() {}
   ProgressBarColumn([Progress]$owner) : base($owner) {}
 
@@ -446,6 +446,13 @@ class ProgressBarRenderable : IRenderable {
     $this.CompletedStyle = $completedStyle
     $this.RemainingStyle = $remainingStyle
     $this.FinishedStyle = $finishedStyle
+  }
+
+  # Override Measure() so the Grid column measurer sees the bar's actual width
+  # instead of the full maxWidth (which would crowd out the percentage/spinner columns).
+  [Measurement] Measure([RenderOptions]$options, [int]$maxWidth) {
+    $safeWidth = [Math]::Min($this.Width, $maxWidth)
+    return [Measurement]::new($safeWidth, $safeWidth)
   }
 
   # Grid calls Render([RenderOptions], int) — we recover ProgressConfig from $this.Options.
