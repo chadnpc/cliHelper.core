@@ -472,18 +472,18 @@ class ProgressLiveSession {
   [Progress]$Owner
   [ProgressContext]$Context
   [LiveDisplayRegion]$Display
-  [int]$Frame
-  [DateTime]$LastUpdate
-  [string[]]$LastLines
+  [int]$Frame = 0
+  [DateTime]$LastUpdate = [DateTime]::UtcNow
+  [string[]]$LastLines = [string[]]@()
   [ProgressConfig]$settings = @{}
 
+  ProgressLiveSession([Progress]$owner) {
+    $this.Owner = $owner
+  }
   ProgressLiveSession([Progress]$owner, [ProgressContext]$context, [LiveDisplayRegion]$display) {
     $this.Owner = $owner
     $this.Context = $context
     $this.Display = $display
-    $this.Frame = 0
-    $this.LastUpdate = [DateTime]::UtcNow
-    $this.LastLines = [string[]]@()
   }
 
   [void] Tick([object]$state) {
@@ -535,21 +535,32 @@ class Progress {
   [AnsiWriter]$Writer
   [int]$RefreshRateMs = 100
   [List[ProgressColumn]]$Columns
-  [ProgressLiveSession]$session
+  [ProgressLiveSession]$Session
 
   Progress([AnsiWriter]$writer) {
-    $this.Writer = $writer
-    $this.InitializeColumns()
+    $this.Initialize($writer)
   }
 
   Progress([IAnsiConsole]$console) {
-    $this.Writer = [ConsoleResolver]::ResolveWriter($console)
-    $this.InitializeColumns()
+    $this.Initialize([ConsoleResolver]::ResolveWriter($console))
   }
 
   Progress([object]$consoleOrWriter) {
-    $this.Writer = [ConsoleResolver]::ResolveWriter($consoleOrWriter)
+    $this.Initialize([ConsoleResolver]::ResolveWriter($consoleOrWriter))
+  }
+
+  [void] Initialize([AnsiWriter]$Writer) {
+    $this.Writer = $Writer
     $this.InitializeColumns()
+    [scriptblock]$config_getterScript = {
+      return $this.Session.settings
+    }
+    [scriptblock]$config_setterScript = {
+      [OutputType([ProgressConfig])]
+      param($Config)
+      $this.Session.settings = ($Config -is [ProgressConfig]) ? $Config : [ProgressConfig]::new($Config)
+    }
+    $this.PsObject.Properties.Add([PSscriptProperty]::new("Config", $config_getterScript, $config_setterScript))
   }
 
   hidden [void] InitializeColumns() {
@@ -592,16 +603,6 @@ class Progress {
       return 80
     }
   }
-  [void] SetProgressConfig($Config) {
-    $this.SetProgressConfig([ProgressConfig]::new($Config))
-  }
-  [void] SetProgressConfig([ProgressConfig]$Config) {
-    if ($null -eq $this.session) {
-      throw "Create a progress LiveSession first"
-    }
-    $this.session.settings = $Config
-  }
-
   static [Task[]] RunConcurrently([ScriptBlock[]]$workItems) {
     $tasks = [List[Task]]::new()
     foreach ($workItem in $workItems) {
