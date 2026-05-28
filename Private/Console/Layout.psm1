@@ -220,7 +220,7 @@ class Grid : IRenderable {
     return $table.Measure($options, $maxWidth)
   }
 
-  [object[]] Render([RenderOptions]$options, [int]$maxWidth) {
+  [Segment[]] Render([RenderOptions]$options, [int]$maxWidth) {
     $table = $this.BuildTable()
     return $table.Render($options, $maxWidth)
   }
