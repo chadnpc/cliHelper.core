@@ -392,8 +392,8 @@ class PercentageColumn : ProgressColumn {
 class SpinnerColumn : ProgressColumn {
   [Spinner]$Spinner = [SpinnerKnown]::Default
   [Style]$Style = [Style]::Parse("yellow")
-  [Style]$CompletedStyle = [Style]::Plain
-  [string]$CompletedText = ''
+  [Style]$CompletedStyle = [Style]::Parse("green")
+  [string]$CompletedText = '✓'
   [string]$PendingText = ' '
 
   SpinnerColumn() : base() {}
@@ -527,7 +527,8 @@ class ProgressRenderable : IRenderable {
         if ($null -ne $w) {
             $colWidths[$i] = [Math]::Max($colWidths[$i], [int]$w)
         } else {
-            $r = $col.Render($cfg, $task, $this.DeltaTime)
+            # Pass zero DeltaTime during measurement phase to prevent double-ticking animations
+            $r = $col.Render($cfg, $task, [TimeSpan]::Zero)
             if ($null -ne $r) {
                 # CRITICAL BUG FIX PRESERVATION (#3 PowerShell Polymorphism):
                 # We wrap $r inside an array @($r)[0] to guarantee we evaluate the concrete instance.
