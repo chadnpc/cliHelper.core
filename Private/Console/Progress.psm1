@@ -470,7 +470,7 @@ class ProgressRenderable : IRenderable {
     $this.DeltaTime = $deltaTime
   }
 
-  [object[]] Render($options, [int]$maxWidth) {
+  [Segment[]] Render($options, [int]$maxWidth) {
     [ValidateNotNull()][ProgressConfig]$options = $options
     $tasks = $this.Context.GetTasks()
     $grid = [Grid]::new()
@@ -523,7 +523,7 @@ class ProgressLiveSession {
     $renderable = [ProgressRenderable]::new($this.Owner, $this.Context, $delta)
 
     $options = [ProgressConfig]::Create($this.Owner.Writer, $this.Owner.Writer.Capabilities)
-    $segs = $renderable.Render($options, $this.Owner.GetRenderWidth())
+    [Segment[]]$segs = $renderable.Render($options, $this.Owner.GetRenderWidth())
     $lines = [Segment]::SplitLines($segs, $this.Owner.GetRenderWidth())
 
     $renderedLines = [List[string]]::new()
