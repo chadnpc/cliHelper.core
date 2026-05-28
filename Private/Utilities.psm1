@@ -161,7 +161,7 @@ class ModuleTools {
 
 
 class ProgressUtil {
-  static [PsRecord] $data = @{
+  static [PsRecord] $data = @{ # instead of PsRecord type, this could be progressconfig property (since it comes with all these key by default)
     ShowProgress     = { return (Get-Variable 'VerbosePreference' -ValueOnly) -eq 'Continue' }
     ProgressBarColor = "LightSeaGreen"
     ProgressMsgColor = "LightGoldenrodYellow"
