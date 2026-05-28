@@ -198,20 +198,19 @@ class Segment {
   static [List[SegmentLine]] SplitLines([IEnumerable]$segments, [int]$maxWidth) {
     $list = [List[Segment]]::new()
     if ($null -ne $segments) {
-        foreach ($s in $segments) {
-            if ($null -eq $s) { continue }
-            if ($s -is [Segment]) {
-                $list.Add([Segment]$s)
-            } elseif ($s -is [IEnumerable]) {
-                foreach ($inner in $s) {
-                    if ($null -ne $inner -and $inner -is [Segment]) {
-                        $list.Add([Segment]$inner)
-                    }
-                }
+      foreach ($s in $segments) {
+        if ($null -eq $s) { continue }
+        if ($s -is [Segment]) {
+          $list.Add([Segment]$s)
+        } elseif ($s -is [IEnumerable]) {
+          foreach ($inner in $s) {
+            if ($null -ne $inner -and $inner -is [Segment]) {
+              $list.Add([Segment]$inner)
             }
+          }
         }
+      }
     }
-    
     $lines = [List[SegmentLine]]::new()
     $currentLine = [SegmentLine]::new()
 
