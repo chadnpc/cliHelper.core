@@ -2,7 +2,8 @@ using namespace System
 using namespace System.Collections.Generic
 using namespace System.Linq
 
-using module .\Enums.psm1
+using module ..\Enums.psm1
+using module ..\Abstracts.psm1
 using module .\Rendering.psm1
 using module .\Widgets.psm1
 using module .\Tables.psm1

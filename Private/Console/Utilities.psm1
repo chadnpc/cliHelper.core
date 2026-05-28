@@ -1,8 +1,10 @@
-using module .\Enums.psm1
 using namespace System
 using namespace System.Collections
 using namespace System.Collections.Generic
 using namespace System.Text
+
+
+# using module ..\Enums.psm1
 
 class SystemConsoleExtensions {
 }

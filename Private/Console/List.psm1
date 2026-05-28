@@ -4,7 +4,8 @@ using namespace System.Text
 
 using module .\Ansi.psm1
 using module .\Colors.psm1
-using module .\Enums.psm1
+using module ..\Enums.psm1
+using module ..\Abstracts.psm1
 using module .\Progress.psm1
 using module .\Prompts.psm1
 using module .\Rendering.psm1

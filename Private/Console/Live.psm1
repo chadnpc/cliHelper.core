@@ -3,7 +3,8 @@ using namespace System.Threading
 using namespace System.Collections.Generic
 
 using module .\Ansi.psm1
-using module .\Enums.psm1
+using module ..\Enums.psm1
+using module ..\Abstracts.psm1
 using module .\Rendering.psm1
 using module .\Progress.psm1
 

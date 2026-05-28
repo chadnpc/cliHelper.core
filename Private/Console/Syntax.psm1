@@ -5,7 +5,8 @@ using namespace System.Globalization
 using namespace System.Text
 
 using module .\Colors.psm1
-using module .\Enums.psm1
+using module ..\Enums.psm1
+using module ..\Abstracts.psm1
 using module .\Rendering.psm1
 
 class JsonSyntax : IRenderable {

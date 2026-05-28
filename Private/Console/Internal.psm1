@@ -1,7 +1,8 @@
 using namespace System
 using namespace System.Collections.Generic
 
-using module .\Enums.psm1
+using module ..\Enums.psm1
+using module ..\Abstracts.psm1
 using module .\Colors.psm1
 
 

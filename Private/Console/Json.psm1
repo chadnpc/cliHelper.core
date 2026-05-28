@@ -5,7 +5,8 @@ using namespace System.Net.Http.Headers
 using namespace System.Collections.Generic
 using namespace System.Globalization
 
-using module .\Enums.psm1
+using module ..\Enums.psm1
+using module ..\Abstracts.psm1
 using module .\Rendering.psm1
 using module .\Syntax.psm1
 

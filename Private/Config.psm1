@@ -5,6 +5,7 @@ using namespace System.Collections.Specialized
 using namespace System.Management.Automation
 
 using module .\Enums.psm1
+using module .\Abstracts.psm1
 using module .\Exceptions.psm1
 using module .\Console\Colors.psm1
 using module .\FontMan.psm1

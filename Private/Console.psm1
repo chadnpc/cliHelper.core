@@ -11,12 +11,10 @@ using namespace System.Runtime.InteropServices
 using namespace System.Management.Automation
 
 using module .\Console\Ansi.psm1
-using module .\Console\Ui.psm1
 using module .\Console\Boxes.psm1
 using module .\Console\Charts.psm1
 using module .\Console\Colors.psm1
 using module .\Console\Emojis.psm1
-using module .\Console\Enums.psm1
 using module .\Console\Figlet.psm1
 using module .\Console\Internal.psm1
 using module .\Console\Json.psm1
@@ -34,6 +32,7 @@ using module .\Console\Table.psm1
 using module .\Console\TableRenderer.psm1
 using module .\Console\Tables.psm1
 using module .\Console\Tree.psm1
+using module .\Console\Ui.psm1
 using module .\Console\Utilities.psm1
 using module .\Console\Widgets.psm1
 

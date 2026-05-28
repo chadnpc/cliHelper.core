@@ -1,7 +1,3 @@
-using namespace System.IO
-using namespace System.Collections.Generic
-using namespace System.Collections.Specialized
-using namespace System.Management.Automation
 
 enum ErrorSeverity {
   Warning = 0
@@ -58,225 +54,564 @@ enum ATTACHMENT_PROMPT : UInt32 {
   ATTACHMENT_PROMPT_EXEC_OR_SAVE = 0x3
 }
 
-
-class PsRecord {
-  hidden [uri] $Remote # usually a gist uri
-  hidden [string] $File
-  hidden [datetime] $LastWriteTime = [datetime]::Now
-
-  PsRecord() {
-    $this._init_()
-  }
-  PsRecord($hashtable) {
-    $this.Add(@($this.ToHashtable($hashtable))); $this._init_()
-  }
-  PsRecord([hashtable[]]$array) {
-    $this.Add($array); $this._init_()
-  }
-  hidden [void] _init_() {
-    $this.PsObject.Methods.Add([PSScriptMethod]::new('GetCount', [ScriptBlock]::Create({ ($this | Get-Member -Type *Property).count })))
-    $this.PsObject.Methods.Add([PSScriptMethod]::new('GetKeys', [ScriptBlock]::Create({ ($this | Get-Member -Type *Property).Name })))
-  }
-  [void] Edit() {
-    $this.Set([PsRecord]::EditFile([IO.FileInfo]::new($this.File)))
-    $this.Save()
-  }
-  [void] Add([hashtable]$table) {
-    [ValidateNotNull()][hashtable]$table = $table
-    $Keys = $table.Keys | Where-Object { !$this.HasProperty($_) -and ($_.GetType().FullName -eq 'System.String' -or $_.GetType().BaseType.FullName -eq 'System.ValueType') }
-    foreach ($key in $Keys) {
-      if ($key -notin ('File', 'Remote', 'LastWriteTime')) {
-        $nval = $table[$key]; [string]$val_type_name = ($null -ne $nval) ? $nval.GetType().Name : [string]::Empty
-        if ($val_type_name -eq 'ScriptBlock') {
-          $this.PsObject.Properties.Add([PsScriptProperty]::new($key, $nval, [scriptblock]::Create("throw [System.Management.Automation.SetValueException]::new('$key is read-only')")))
-        } else {
-          $this | Add-Member -MemberType NoteProperty -Name $key -Value $nval
-        }
-      } else {
-        $this.$key = $table[$key]
-      }
-    }
-  }
-  [void] Add([hashtable[]]$items) {
-    foreach ($item in $items) { $this.Add($item) }
-  }
-  [void] Add([string]$key, [System.Object]$value) {
-    [ValidateNotNullOrWhiteSpace()][string]$key = $key
-    if (!$this.HasProperty($key)) {
-      $htab = [hashtable]::new(); $htab.Add($key, $value); $this.Add($htab)
-    } else {
-      Write-Warning "Config.Add() Skipped $Key. Key already exists."
-    }
-  }
-  [void] Add([List[hashtable]]$items) {
-    foreach ($item in $items) { $this.Add($item) }
-  }
-  [void] Set([OrderedDictionary]$dict) {
-    $dict.Keys.Foreach({ $this.Set($_, $dict["$_"]) });
-  }
-  [void] Set([hashtable]$table) {
-    [ValidateNotNull()][hashtable]$table = $table
-    $Keys = $table.Keys | Where-Object { $_.GetType().FullName -eq 'System.String' -or $_.GetType().BaseType.FullName -eq 'System.ValueType' } | Sort-Object -Unique
-    foreach ($key in $Keys) {
-      $nval = $table[$key]; [string]$val_type_name = ($null -ne $nval) ? $nval.GetType().Name : [string]::Empty
-      if ($val_type_name -eq 'ScriptBlock') {
-        $this.PsObject.Properties.Add([PsScriptProperty]::new($key, $nval, [scriptblock]::Create("throw [System.Management.Automation.SetValueException]::new('$key is read-only')") ))
-      } else {
-        $this | Add-Member -MemberType NoteProperty -Name $key -Value $nval -Force
-      }
-    }
-  }
-  [void] Set([hashtable[]]$items) {
-    foreach ($item in $items) { $this.Set($item) }
-  }
-  [void] Set([string]$key, [System.Object]$value) {
-    $htab = [hashtable]::new(); $htab.Add($key, $value)
-    $this.Set($htab)
-  }
-  # work in progress
-  static [hashtable[]] Read([string]$FilePath) {
-    $cfg = $null
-    return $cfg
-  }
-  [bool] HasProperty([object]$Name) {
-    [ValidateNotNullOrWhiteSpace()][string]$Name = $($Name -as 'string')
-    return $this.PsObject.Properties.Name -contains "$Name"
-  }
-  [void] Import([String]$FilePath) {
-    Write-Host "Import records: $FilePath ..." -ForegroundColor Green
-    $this.Set([PsRecord]::Read($FilePath))
-    Write-Host "Import records Complete" -ForegroundColor Green
-  }
-  [byte[]] ToByte() {
-    return $this | xconvert ToBytes
-  }
-  [hashtable] ToHashtable([object]$InputObject) {
-    return $this.ToHashtable($InputObject, 64)
-  }
-  [hashtable] ToHashtable([object]$InputObject, [int] $MaxDepth) {
-    # Base cases
-    if ($null -eq $InputObject) { return $null }
-    if ($MaxDepth -le 0) { return $InputObject }
-
-    # Already a dictionary/hashtable — re-recurse its values
-    if ($InputObject -is [System.Collections.IDictionary]) {
-      $hash = @{}
-      foreach ($key in $InputObject.Keys) {
-        $hash[$key] = $this.ToHashtable($InputObject[$key], $MaxDepth - 1)
-      }
-      return $hash
-    }
-
-    # Enumerable (but not a string) — map each element
-    if ($InputObject -is [System.Collections.IEnumerable] -and
-      $InputObject -isnot [string]) {
-      $collection = [System.Collections.Generic.List[object]]::new()
-      foreach ($item in $InputObject) {
-        $collection.Add($this.ToHashtable($item, $MaxDepth - 1))
-      }
-      # Return a typed array so PowerShell doesn't unwrap a single-element list
-      return , $collection.ToArray()
-    }
-
-    # PSObject (e.g. deserialized JSON, Select-Object output, custom objects)
-    if ($InputObject -is [psobject] -and
-      $InputObject.PSObject.Properties.Count -gt 0) {
-      $hash = @{}
-      foreach ($prop in $InputObject.PSObject.Properties) {
-        $hash[$prop.Name] = $this.ToHashtable($prop.Value, $MaxDepth - 1)
-      }
-      return $hash
-    }
-
-    # Scalar / value type — return as-is
-    return $InputObject
-  }
-  [void] Import([uri]$raw_uri) { }
-  [void] Upload() {
-    if ([string]::IsNullOrWhiteSpace($this.Remote)) { throw [System.ArgumentException]::new('remote') }
-  }
-  [array] ToArray() {
-    $array = @(); $props = $this | Get-Member -MemberType NoteProperty
-    if ($null -eq $props) { return @() }
-    $props.name | ForEach-Object { $array += @{ $_ = $this.$_ } }
-    return $array
-  }
-  [string] ToJson() {
-    return [string]($this | Select-Object -ExcludeProperty count | ConvertTo-Json -Depth 3)
-  }
-  [System.Collections.Specialized.OrderedDictionary] ToOrdered() {
-    $dict = [System.Collections.Specialized.OrderedDictionary]::new(); $Keys = $this.PsObject.Properties.Where({ $_.Membertype -like "*Property" }).Name
-    if ($Keys.Count -gt 0) {
-      $Keys | ForEach-Object { [void]$dict.Add($_, $this."$_") }
-    }
-    return $dict
-  }
-  [string] ToString() {
-    $r = $this.ToArray(); $s = ''
-    $shortnr = [ScriptBlock]::Create({
-        while ($str.Length -gt $MaxLength) {
-          $str = $str.Substring(0, [Math]::Floor(($str.Length * 4 / 5)))
-        }
-        return $str
-      }
-    )
-    if ($r.Count -gt 1) {
-      $b = $r[0]; $e = $r[-1]
-      $0 = $shortnr.Invoke("{'$($b.Keys)' = '$($b.values.ToString())'}", 40)
-      $1 = $shortnr.Invoke("{'$($e.Keys)' = '$($e.values.ToString())'}", 40)
-      $s = "@($0 ... $1)"
-    } elseif ($r.count -eq 1) {
-      $0 = $shortnr.Invoke("{'$($r[0].Keys)' = '$($r[0].values.ToString())'}", 40)
-      $s = "@($0)"
-    } else {
-      $s = '@()'
-    }
-    return $s
-  }
+enum VerticalAlignment {
+  Top = 0
+  Middle = 1
+  Bottom = 2
+}
+enum VerticalOverflow {
+  Crop = 0
+  Ellipsis = 1
+  Visible = 2
+}
+enum VerticalOverflowCropping {
+  Top = 0
+  Bottom = 1
 }
 
-class NetRouteDiagnostics {
-  [string]$ComputerName
-  [string]$RemoteAddress
-  [string]$ConstrainSourceAddress
-  [int]$ConstrainInterfaceIndex
-  [bool]$Detailed
-  [bool]$RouteDiagnosticsSucceeded
-  [string[]]$RouteSelectionEvents = @()
-  [string[]]$SourceAddressSelectionEvents = @()
-  [string[]]$DestinationAddressSelectionEvents = @()
-  [string]$LogFile
-  [object]$SelectedNetRoute
-  [object]$SelectedSourceAddress
-  [object]$OutgoingNetAdapter
-  [string]$OutgoingInterfaceAlias
-  [int]$OutgoingInterfaceIndex
-  [string]$OutgoingInterfaceDescription
-  [string[]]$ResolvedAddresses
+enum InteractionSupport {
+  Detect = 0
+  Yes = 1
+  No = 2
 }
 
-class TestNetConnectionResult {
-  [string]$ComputerName
-  [bool]$Detailed
-  [string[]]$ResolvedAddresses
-  [bool]$NameResolutionSucceeded
-  [string]$RemoteAddress
-  [bool]$TcpTestSucceeded
-  [int]$RemotePort
-  [bool]$PingSucceeded
-  [object]$PingReplyDetails
-  [string[]]$TraceRoute
-  [object[]]$DNSOnlyRecords
-  [object[]]$LLMNRNetbiosRecords
-  [object[]]$BasicNameResolution
-  [object[]]$AllNameResolutionResults
-  [bool]$IsAdmin
-  [string]$NetworkIsolationContext
-  [object[]]$MatchingIPsecRules
-  [string]$SourceAddress
-  [object]$NetRoute
-  [object]$NetAdapter
-  [string]$InterfaceAlias
-  [int]$InterfaceIndex
-  [string]$InterfaceDescription
+enum CursorDirection {
+  Up = 0
+  Down = 1
+  Left = 2
+  Right = 3
+}
+
+enum Justify {
+  Left = 0
+  Right = 1
+  Center = 2
+}
+enum Overflow {
+  Fold = 0
+  Crop = 1
+  Ellipsis = 2
+}
+
+enum HorizontalAlignment {
+  Left = 0
+  Center = 1
+  Right = 2
+}
+
+enum JsonTokenType {
+  None = 0
+  ObjectStart = 1
+  ObjectEnd = 2
+  ArrayStart = 3
+  ArrayEnd = 4
+  MemberName = 5
+  String = 6
+  Number = 7
+  Boolean = 8
+  Null = 9
+  Comment = 10
+  Symbol = 11
+}
+
+[Flags()]
+enum Decoration {
+  None = 0
+  Bold = 1
+  Dim = 2
+  Italic = 4
+  Underline = 8
+  Invert = 16
+  Conceal = 32
+  SlowBlink = 64
+  RapidBlink = 128
+  Strikethrough = 256
+}
+
+$MemberDefinition = @{
+  TypeName   = 'Decoration'
+  MemberName = 'GetFlags'
+  MemberType = 'ScriptMethod'
+  Value      = {
+    foreach ($Flag in $this.GetType().GetEnumValues()) {
+      if ($this.HasFlag($Flag)) { $Flag }
+    }
+  }
+}
+Update-TypeData @MemberDefinition -Force
+# $dec = [Decoration]28
+# $dec.GetFlags()
+
+enum ColorSystemSupport {
+  Detect = -1
+  NoColors = 0
+  Legacy = 1
+  Standard = 2
+  EightBit = 3
+  TrueColor = 4
+}
+
+enum ColorSystem {
+  NoColors = 0
+  Legacy = 1
+  Standard = 2
+  EightBit = 3
+  TrueColor = 4
+}
+
+enum AnsiSupport {
+  Detect = 0
+  Yes = 1
+  No = 2
+}
+
+enum ListPromptInputResult {
+}
+
+enum BoxBorderPart {
+  HeaderTopLeft = 0
+  HeaderTop = 1
+  HeaderTopRight = 2
+  HeaderRight = 3
+  HeaderBottomRight = 4
+  HeaderBottom = 5
+  HeaderBottomLeft = 6
+  HeaderLeft = 7
+  TopLeft = 8
+  Top = 9
+  TopRight = 10
+  Right = 11
+  BottomRight = 12
+  Bottom = 13
+  BottomLeft = 14
+  Left = 15
+}
+enum TableBorderPart {
+  HeaderTopLeft = 0
+  HeaderTop = 1
+  HeaderTopSeparator = 2
+  HeaderTopRight = 3
+  HeaderLeft = 4
+  HeaderSeparator = 5
+  HeaderRight = 6
+  HeaderBottomLeft = 7
+  HeaderBottom = 8
+  HeaderBottomSeparator = 9
+  HeaderBottomRight = 10
+  CellLeft = 11
+  CellSeparator = 12
+  CellRight = 13
+  FooterTopLeft = 14
+  FooterTop = 15
+  FooterTopSeparator = 16
+  FooterTopRight = 17
+  FooterBottomLeft = 18
+  FooterBottom = 19
+  FooterBottomSeparator = 20
+  FooterBottomRight = 21
+  RowLeft = 22
+  RowCenter = 23
+  RowSeparator = 24
+  RowRight = 25
+}
+
+enum TreeGuidePart {
+  Space = 0
+  Continue = 1
+  Fork = 2
+  End = 3
+}
+
+enum TreePart {
+  Root = 0
+  Leaf = 1
+}
+
+enum TablePart {
+  Top = 0
+  HeaderSeparator = 1
+  RowSeparator = 2
+  FooterSeparator = 3
+  Bottom = 4
+}
+
+enum FigletLayoutMode {
+  FullSize = 0
+  Fitted = 1
+  Smushed = 2
+}
+
+enum FigletFontName {
+  ACROBATIC
+  ALLIGATOR
+  ALLIGATOR2
+  ALLIGATOR3
+  ALPHA
+  ALPHABET
+  AMC_3_LINE
+  AMC_3_LIV1
+  AMC_AAA01
+  AMC_NEKO
+  AMC_RAZOR
+  AMC_RAZOR2
+  AMC_SLASH
+  AMC_SLIDER
+  AMC_THIN
+  AMC_TUBES
+  AMC_UNTITLED
+  AMC3LINE
+  AMC3LIV1
+  AMCAAA01
+  AMCNEKO
+  AMCRAZO2
+  AMCRAZOR
+  AMCSLASH
+  AMCSLDER
+  AMCTHIN
+  AMCTUBES
+  AMCUN1
+  ANSI_REGULAR
+  ANSI_SHADOW
+  ARROWS
+  ASCII_3D
+  ASCII_NEW_ROMAN_2
+  ASCII_NEW_ROMAN
+  AVATAR
+  B1FF
+  BANNER
+  BANNER3_D
+  BANNER3
+  BANNER4
+  BARBWIRE
+  BASIC
+  BEAR
+  BELL
+  BENJAMIN
+  BIG_CHIEF
+  BIG_MONEY_NE
+  BIG_MONEY_NW
+  BIG_MONEY_SE
+  BIG_MONEY_SW
+  BIG
+  BIGCHIEF
+  BIGFIG
+  BINARY
+  BLOCK
+  BLOCKS
+  BLOODY
+  BOLGER
+  BRACED
+  BRIGHT
+  BROADWAY_KB_2
+  BROADWAY_KB
+  BROADWAY
+  BUBBLE
+  BULBHEAD
+  CALGPHY2
+  CALIGRAPHY
+  CALIGRAPHY2
+  CALVIN_S
+  CARDS
+  CATWALK
+  CHISELED
+  CHUNKY
+  COINSTAK
+  COLA
+  COLOSSAL
+  COMPUTER
+  CONTESSA
+  CONTRAST
+  COSMIC
+  COSMIKE
+  CRAWFORD
+  CRAWFORD2
+  CRAZY
+  CRICKET
+  CURSIVE
+  CYBERLARGE
+  CYBERMEDIUM
+  CYBERSMALL
+  CYGNET
+  DANC4
+  DANCING_FONT
+  DANCINGFONT
+  DECIMAL
+  DEF_LEPPARD
+  DEFAULT_3D
+  DEFLEPPARD
+  DELTA_CORPS_PRIEST_1
+  DIAGONAL_3D_2
+  DIAGONAL_3D
+  DIAMOND
+  DIET_COLA
+  DIETCOLA
+  DIGITAL
+  DOH
+  DOOM
+  DOS_REBEL
+  DOSREBEL
+  DOT_MATRIX
+  DOTMATRIX
+  DOUBLE_SHORTS
+  DOUBLE
+  DOUBLESHORTS
+  DR_PEPPER
+  DRPEPPER
+  DWHISTLED
+  EFTI_CHESS
+  EFTI_FONT
+  EFTI_ITALIC
+  EFTI_PITI
+  EFTI_ROBOT
+  EFTI_WALL
+  EFTI_WATER
+  EFTICHESS
+  EFTIFONT
+  EFTIPITI
+  EFTIROBOT
+  EFTITALIC
+  EFTIWALL
+  EFTIWATER
+  ELECTRONIC
+  ELITE
+  EPIC
+  FENDER
+  FILTER_1
+  FIRE_FONT_K
+  FIRE_FONT_S
+  FLIPPED
+  FLOWER_POWER
+  FLOWERPOWER
+  FOUR_MAX
+  FOUR_TOPS
+  FOURTOPS
+  FRAKTUR
+  FUN_FACE
+  FUN_FACES
+  FUNFACE
+  FUNFACES
+  FUZZY
+  GEORGI16
+  GEORGIA11
+  GHOST
+  GHOULISH
+  GLENYN
+  GOOFY
+  GOTHIC
+  GRACEFUL
+  GRADIENT
+  GRAFFITI
+  GREEK
+  HALFIWI
+  HEART_LEFT
+  HEART_RIGHT
+  HENRY_3D
+  HENRY3D
+  HEX
+  HIEROGLYPHS
+  HOLLYWOOD
+  HORIZONTAL_LEFT
+  HORIZONTAL_RIGHT
+  HORIZONTALLEFT
+  HORIZONTALRIGHT
+  ICL_1900
+  IMPOSSIBLE
+  INVITA
+  ISOMETRIC1
+  ISOMETRIC2
+  ISOMETRIC3
+  ISOMETRIC4
+  ITALIC
+  IVRIT
+  JACKY
+  JAZMINE
+  JERUSALEM
+  JS_BLOCK_LETTERS
+  JS_BRACKET_LETTERS
+  JS_CAPITAL_CURVES
+  JS_CURSIVE
+  JS_STICK_LETTERS
+  KATAKANA
+  KBAN
+  KEYBOARD
+  KNOB
+  KOHOLINT
+  KOMPAKTBLK
+  KONTO_SLANT
+  KONTO
+  KONTOSLANT
+  LARRY_3D_2
+  LARRY_3D
+  LARRY3D
+  LCD
+  LEAN
+  LETTERS
+  LIL_DEVIL
+  LILDEVIL
+  LINE_BLOCKS
+  LINEBLOCKS
+  LINES_3D
+  LINUX
+  LOCKERGNOME
+  MADRID
+  MARQUEE
+  MAXFOUR
+  MAXIWI
+  MERLIN1
+  MERLIN2
+  MIKE
+  MINI
+  MINIWI
+  MIRROR
+  MNEMONIC
+  MODULAR
+  MONO9
+  MORSE
+  MORSE2
+  MOSCOW
+  MSHEBREW210
+  MUZZLE
+  NANCYJ_FANCY
+  NANCYJ_IMPROVED
+  NANCYJ_UNDERLINED
+  NANCYJ
+  NIPPLES
+  NSCRIPT
+  NT_GREEK
+  NTGREEK
+  NV_SCRIPT
+  O8
+  OBLIQUE_5LINE_2
+  OBLIQUE_5LINE
+  OCTAL
+  OGRE
+  OLD_BANNER
+  OLDBANNER
+  ONE_ROW
+  OS2
+  PATORJK_HEX
+  PATORJKS_CHEESE
+  PAWP
+  PEAKS_SLANT
+  PEAKS
+  PEAKSSLANT
+  PEBBLES
+  PEPPER
+  PIXEL_3X5
+  POISON
+  PUFFY
+  PUZZLE
+  PYRAMID
+  RAMMSTEIN
+  README
+  RECTANGLES
+  RED_PHOENIX
+  RELIEF
+  RELIEF2
+  REV
+  REVERSE
+  ROMAN
+  ROT13
+  ROTATED
+  ROUNDED
+  ROWAN_CAP
+  ROWANCAP
+  ROZZO
+  RUNIC
+  RUNYC
+  S_BLOOD
+  S_RELIEF
+  SANTA_CLARA
+  SANTACLARA
+  SBLOOD
+  SCRIPT
+  SERIFCAP
+  SHADOW
+  SHIMROD
+  SHORT
+  SIX_FO
+  SL_SCRIPT
+  SLANT_RELIEF
+  SLANT
+  SLIDE
+  SLSCRIPT
+  SMALL_CAPS
+  SMALL_ISOMETRIC1
+  SMALL_KEYBOARD
+  SMALL_POISON
+  SMALL_SCRIPT
+  SMALL_SHADOW
+  SMALL_SLANT
+  SMALL_TENGWAR
+  SMALL
+  SMALLCAPS
+  SMISOME1
+  SMKEYBOARD
+  SMPOISON
+  SMSCRIPT
+  SMSHADOW
+  SMSLANT
+  SMTENGWAR
+  SOFT
+  SPEED
+  SPLIFF
+  STACEY
+  STAMPATE
+  STAMPATELLO
+  STANDARD
+  STAR_STRIPS
+  STAR_WARS
+  STARSTRIPS
+  STARWARS
+  STELLAR
+  STENCIL
+  STFOREK
+  STICK_LETTERS
+  STOP
+  STRAIGHT
+  STRONGER_THAN_ALL
+  SUB_ZERO
+  SWAMP_LAND
+  SWAMPLAND
+  SWAN
+  SWEET
+  TANJA
+  TENGWAR
+  TERM
+  TERMINUS_DOTS
+  TERMINUS
+  TEST1
+  THE_EDGE
+  THICK
+  THIN
+  THIS
+  THORNED
+  THREE_POINT
+  THREEPOINT
+  TICKS_SLANT
+  TICKS
+  TICKSSLANT
+  TILES
+  TINKER_TOY
+  TOMBSTONE
+  TRAIN
+  TREK
+  TSALAGI
+  TUBES_REGULAR
+  TUBES_SMUSHED
+  TUBULAR
+  TWISTED
+  TWO_POINT
+  TWOPOINT
+  UBLK
+  UNIVERS
+  USA_FLAG
+  USAFLAG
+  VARSITY
+  WAVY
+  WEIRD
+  WET_LETTER
+  WETLETTER
+  WHIMSY
+  WOW
 }

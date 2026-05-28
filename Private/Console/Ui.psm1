@@ -3,7 +3,8 @@ using namespace System.IO
 using namespace System.Threading
 
 
-using module .\Enums.psm1
+using module ..\Enums.psm1
+using module ..\Abstracts.psm1
 using module .\Internal.psm1
 using module .\Colors.psm1
 using module .\Rendering.psm1

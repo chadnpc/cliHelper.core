@@ -1,6 +1,7 @@
 
-using module .\Console\Colors.psm1
 using module .\Enums.psm1
+using module .\Abstracts.psm1
+using module .\Console\Colors.psm1
 using module .\Console.psm1
 using module .\Console\Internal.psm1
 

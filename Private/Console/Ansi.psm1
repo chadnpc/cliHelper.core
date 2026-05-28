@@ -3,7 +3,8 @@ using namespace System.IO
 using namespace System.Collections.Generic
 using namespace System.Text
 
-using module .\Enums.psm1
+using module ..\Enums.psm1
+using module ..\Abstracts.psm1
 using module .\Colors.psm1
 using module .\Internal.psm1
 using module .\Rendering.psm1

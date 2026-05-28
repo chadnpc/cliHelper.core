@@ -4,6 +4,7 @@ using namespace System.Net.NetworkInformation
 using namespace System.Net.Sockets
 
 using module .\Enums.psm1
+using module .\Abstracts.psm1
 using module .\DNS.psm1
 using module .\IPManagement.psm1
 

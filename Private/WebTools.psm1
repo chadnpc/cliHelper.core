@@ -1,4 +1,7 @@
+using namespace System.Net
+
 using module .\Enums.psm1
+using module .\Abstracts.psm1
 using module .\Console.psm1
 using module .\Console\Internal.psm1
 using module .\Utilities.psm1
@@ -109,12 +112,10 @@ class dlh {
         }
         [System.Threading.Thread]::Sleep(50)
       }
-    }
-    catch {
+    } catch {
       Write-Console $_.Exception.Message -f Salmon
       throw $_
-    }
-    finally {
+    } finally {
       $verbose ? ([ProgressUtil]::WriteProgressBar(100, $true, "  Downloaded $($dlEvent.GetSizeProgress())", $true)) : $null
       if ([IO.File]::Exists($OutFile)) {
         $verbose ? (Write-Console "  OutPath: '$OutFile'" -f SteelBlue) : $null
@@ -123,8 +124,7 @@ class dlh {
     }
     if ([IO.File]::Exists($OutFile)) {
       return Get-Item $OutFile
-    }
-    else {
+    } else {
       return [IO.FileInfo]::new($OutFile)
     }
   }

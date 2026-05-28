@@ -4,13 +4,13 @@ using namespace System.Threading
 using namespace System.Threading.Tasks
 
 using module ..\Enums.psm1
+using module ..\Abstracts.psm1
 using module .\Colors.psm1
 using module .\Rendering.psm1
 using module .\Ansi.psm1
 using module .\Spinners.psm1
 using module .\Layout.psm1
 using module .\Widgets.psm1
-using module .\Enums.psm1
 
 class ProgressTaskState {
   [object]$SyncRoot
@@ -140,18 +140,24 @@ class ProgressTask {
   }
 }
 
-class ProgressRenderOptions : RenderOptions {
+class ProgressConfig : RenderOptions {
   [RGB]$ProgressBarColor
   [RGB]$ProgressMsgColor
   [string]$ProgressBlock
-  ProgressRenderOptions() : base() {}
-  ProgressRenderOptions($hashtable) { $this.SetDefaults() }
-  ProgressRenderOptions([hashtable[]]$array): base($array) { $this.SetDefaults() }
-  [void] SetDefaults() {
+  ProgressConfig() : base() {}
+  ProgressConfig($hashtable) { $this.Reset() }
+  ProgressConfig([hashtable[]]$array): base($array) { $this.Reset() }
+  [void] Reset() {
     $this.ProgressBarColor = "LightSeaGreen"
     $this.ProgressMsgColor = "LightGoldenrodYellow"
     $this.ProgressBlock = '■'
     $this.PsObject.Properties.Add([PSscriptProperty]::new("ShowProgress", { return (Get-Variable 'VerbosePreference' -ValueOnly) -eq 'Continue' }))
+  }
+  [RenderOptions] ToRenderOptions() {
+    # copy all base propertis
+    $o = [RenderOptions]@{}; $o.PsObject.Properties.Name.ForEach({ $o.$_ = $this.$_ })
+    # do other changes here ...
+    return $o
   }
 }
 
@@ -426,8 +432,11 @@ class ProgressBarRenderable : IRenderable {
     $this.FinishedStyle = $finishedStyle
   }
 
-  [object[]] Render($options, [int]$maxWidth) {
-    [ValidateNotNullOrEmpty()][ProgressRenderOptions]$options = $options
+  [Object[]] Render($options, [int]$maxWidth) {
+    return $this.Render([ProgressConfig]$options, $maxWidth)
+  }
+  [object[]] Render([ProgressConfig]$options, [int]$maxWidth) {
+    [ValidateNotNullOrEmpty()][ProgressConfig]$options = $options
     $segs = [List[Segment]]::new()
     $safeWidth = [Math]::Min($this.Width, $maxWidth)
 
@@ -443,7 +452,7 @@ class ProgressBarRenderable : IRenderable {
     $actualCompStyle = if ($this.Task.IsFinished) { $this.FinishedStyle } else { $this.CompletedStyle }
 
     if ($filledCount -gt 0) {
-      $segs.Add([Segment]::new(('=' * $filledCount), $actualCompStyle))
+      $segs.Add([Segment]::new(($options.ProgressBlock * $filledCount), $actualCompStyle))
     }
     if ($emptyCount -gt 0) {
       $segs.Add([Segment]::new(('-' * $emptyCount), $this.RemainingStyle))
@@ -464,7 +473,10 @@ class ProgressRenderable : IRenderable {
   }
 
   [object[]] Render($options, [int]$maxWidth) {
-    $progOptions = [ProgressRenderOptions]$options
+    return $this.Render([ProgressConfig]$options, $maxWidth)
+  }
+  [object[]] Render([ProgressConfig]$options, [int]$maxWidth) {
+    [ValidateNotNullOrEmpty()][ProgressConfig]$options = $options
     $tasks = $this.Context.GetTasks()
     $grid = [Grid]::new()
 
@@ -480,12 +492,12 @@ class ProgressRenderable : IRenderable {
     foreach ($task in $tasks) {
       $rowRenderables = [List[IRenderable]]::new()
       foreach ($col in $this.Owner.Columns) {
-        $rowRenderables.Add($col.Render($progOptions, $task, $this.DeltaTime))
+        $rowRenderables.Add($col.Render($options.ToRenderOptions(), $task, $this.DeltaTime))
       }
       [void]$grid.AddRow($rowRenderables.ToArray())
     }
 
-    return $grid.Render($options, $maxWidth)
+    return $grid.Render($options.ToRenderOptions(), $maxWidth)
   }
 }
 
@@ -499,13 +511,13 @@ class ProgressLiveSession {
 
   ProgressLiveSession([ref]$Owner) {
     $this.Owner = $Owner.Value
-    $this.PsObject.Properties.Add([PSscriptProperty]::new("settings", { return $this.Owner.Config }, { param($settings) $this.Owner.Config = ($settings -is [ProgressRenderOptions]) ? $settings : [ProgressRenderOptions]::new($settings) }))
+    $this.PsObject.Properties.Add([PSscriptProperty]::new("settings", { return $this.Owner.Config }, { param($settings) $this.Owner.Config = ($settings -is [ProgressConfig]) ? $settings : [ProgressConfig]::new($settings) }))
   }
   ProgressLiveSession([Progress]$Owner, [ProgressContext]$context, [LiveDisplayRegion]$display) {
     $this.Owner = $Owner
     $this.Context = $context
     $this.Display = $display
-    $this.PsObject.Properties.Add([PSscriptProperty]::new("settings", { return $this.Owner.Config }, { param($settings) $this.Owner.Config = ($settings -is [ProgressRenderOptions]) ? $settings : [ProgressRenderOptions]::new($settings) }))
+    $this.PsObject.Properties.Add([PSscriptProperty]::new("settings", { return $this.Owner.Config }, { param($settings) $this.Owner.Config = ($settings -is [ProgressConfig]) ? $settings : [ProgressConfig]::new($settings) }))
   }
 
   [void] Tick([object]$state) {
@@ -515,7 +527,7 @@ class ProgressLiveSession {
 
     $renderable = [ProgressRenderable]::new([ref]$this.Owner, $this.Context, $delta)
 
-    $options = [ProgressRenderOptions]::Create($this.Owner.Writer, $this.Owner.Writer.Capabilities)
+    $options = [ProgressConfig]::Create($this.Owner.Writer, $this.Owner.Writer.Capabilities)
     $segs = $renderable.Render($options, $this.Owner.GetRenderWidth())
     $lines = [Segment]::SplitLines($segs, $this.Owner.GetRenderWidth())
 
@@ -558,7 +570,7 @@ class Progress {
   [int]$RefreshRateMs = 100
   [List[ProgressColumn]]$Columns
   [ProgressLiveSession]$Session
-  [ProgressRenderOptions]$Config = @{}
+  [ProgressConfig]$Config = @{}
 
   Progress([AnsiWriter]$writer) {
     $this.Initialize($writer)
