@@ -199,7 +199,16 @@ class Segment {
     $list = [List[Segment]]::new()
     if ($null -ne $segments) {
         foreach ($s in $segments) {
-            if ($null -ne $s) { $list.Add([Segment]$s) }
+            if ($null -eq $s) { continue }
+            if ($s -is [Segment]) {
+                $list.Add([Segment]$s)
+            } elseif ($s -is [IEnumerable]) {
+                foreach ($inner in $s) {
+                    if ($null -ne $inner -and $inner -is [Segment]) {
+                        $list.Add([Segment]$inner)
+                    }
+                }
+            }
         }
     }
     
