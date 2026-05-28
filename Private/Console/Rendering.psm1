@@ -171,15 +171,40 @@ class Segment {
       [Segment]::new($secondText, $this.Style, $this.IsLineBreak, $this.IsControlCode)
     )
   }
+
+  static [List[Segment]] Truncate([IEnumerable]$segments, [int]$maxWidth) {
+    $result = [List[Segment]]::new()
+    $currentLength = 0
+    foreach ($seg in $segments) {
+      if ($null -eq $seg -or $seg -isnot [Segment]) { continue }
+      $segLen = $seg.CellCount()
+      if ($currentLength + $segLen -le $maxWidth) {
+        $result.Add($seg)
+        $currentLength += $segLen
+      } else {
+        $offset = $maxWidth - $currentLength
+        if ($offset -gt 0) {
+          $split = $seg.Split($offset)
+          if ($null -ne $split.Item1) { $result.Add($split.Item1) }
+        }
+        break
+      }
+    }
+    return $result
+  }
   static [List[SegmentLine]] SplitLines([Segment[]]$segments, [int]$maxWidth) {
     return [Segment]::SplitLines((, $segments), $maxWidth)
   }
   static [List[SegmentLine]] SplitLines([IEnumerable]$segments, [int]$maxWidth) {
-    [Segment[]]$segmentsArr = $segments.ForEach({ $_ })
-    $list = [List[segment]]::new(); $segmentsArr.ForEach({ $list.Add([Segment]$_) })
+    $list = [List[Segment]]::new()
+    if ($null -ne $segments) {
+        foreach ($s in $segments) {
+            if ($null -ne $s) { $list.Add([Segment]$s) }
+        }
+    }
+    
     $lines = [List[SegmentLine]]::new()
     $currentLine = [SegmentLine]::new()
-    $stack = [Stack]::new($list)
 
     # Reverse stack because we pop from top
     $list.Reverse()
