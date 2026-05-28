@@ -8,7 +8,6 @@ using module .\Enums.psm1
 using module .\Exceptions.psm1
 using module .\Console\Colors.psm1
 using module .\FontMan.psm1
-using module .\Models.psm1
 using module .\MotdGen.psm1
 using module .\Utilities.psm1
 
