@@ -396,7 +396,7 @@ class TableMeasurer {
     TableMeasurer([object]$table, [RenderOptions]$options) {
         $this._table = $table
         $this._options = $options
-        $this._explicitWidth = if ($null -ne $table.Width) { $table.Width.Value } else { -1 }
+        $this._explicitWidth = if ($null -ne $table.Width) { $table.Width } else { -1 }
         $this._border = $table.Border
         $this._padRightCell = $table.PadRightCell
     }
@@ -494,7 +494,7 @@ class TableMeasurer {
 
     [Measurement] MeasureColumn([TableColumn]$column, [int]$maxWidth) {
         if ($null -ne $column.Width) {
-            return [Measurement]::new($column.Width.Value, $column.Width.Value)
+            return [Measurement]::new($column.Width, $column.Width)
         }
         $colIdx = $this._table.Columns.IndexOf($column)
         $minWidths = [List[int]]::new()
