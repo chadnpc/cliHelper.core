@@ -164,7 +164,10 @@ class ProgressConfig : RenderOptions {
   }
   [RenderOptions] ToRenderOptions() {
     # copy all base properties
-    $o = [RenderOptions]@{}; $o.PsObject.Properties.Name.ForEach({ $o.$_ = $this.$_ })
+    $o = [RenderOptions]@{}
+    foreach ($name in $o.PsObject.Properties.Name) {
+        $o.$name = $this.$name
+    }
     return $o
   }
 }
@@ -371,6 +374,8 @@ class PercentageColumn : ProgressColumn {
   PercentageColumn() : base() {}
   PercentageColumn([Progress]$owner) : base($owner) {}
 
+  [Nullable[int]] GetColumnWidth([RenderOptions]$options) { return 4 }
+
   [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     $pct = $task.Percent()
     $styleToUse = if ($task.IsFinished) { $this.CompletedStyle } else { $this.Style }
@@ -388,6 +393,8 @@ class SpinnerColumn : ProgressColumn {
 
   SpinnerColumn() : base() {}
   SpinnerColumn([Progress]$owner) : base($owner) {}
+
+  [Nullable[int]] GetColumnWidth([RenderOptions]$options) { return 1 }
 
   hidden [double]$_accumulated = 0
   hidden [int]$_index = 0
@@ -420,6 +427,8 @@ class ProgressBarColumn : ProgressColumn {
   [Style]$RemainingStyle = [Style]::Parse("grey")
   ProgressBarColumn() : base() {}
   ProgressBarColumn([Progress]$owner) : base($owner) {}
+
+  [Nullable[int]] GetColumnWidth([RenderOptions]$options) { return $this.Width }
 
   [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     $cfg = if ($options -is [ProgressConfig]) { [ProgressConfig]$options } else { $null }
@@ -497,28 +506,61 @@ class ProgressRenderable : IRenderable {
   [Segment[]] Render([RenderOptions]$options, [int]$maxWidth) {
     $cfg = if ($options -is [ProgressConfig]) { [ProgressConfig]$options } else { [ProgressConfig]::new() }
     $tasks = $this.Context.GetTasks()
-    $grid = [Grid]::new()
     $renderOpts = $cfg.ToRenderOptions()
+    $result = [List[Segment]]::new()
 
-    for ($i = 0; $i -lt $this.Owner.Columns.Count; $i++) {
-      $colWidth = $this.Owner.Columns[$i].GetColumnWidth($cfg)
-      $col = [GridColumn]::new().PadRight(1)
-      if ($null -ne $colWidth) { $col.Width = $colWidth }
-      if ($this.Owner.Columns[$i].NoWrap) { [void]$col.NoWrap() }
-      if ($i -eq $this.Owner.Columns.Count - 1) { [void]$col.PadRight(0) }
-      [void]$grid.AddColumn($col)
-    }
-
+    # Calculate exact max constraints across all tasks to align them as a simulated grid
+    $colWidths = [int[]]::new($this.Owner.Columns.Count)
     foreach ($task in $tasks) {
-      $rowRenderables = [List[IRenderable]]::new()
-      foreach ($col in $this.Owner.Columns) {
-        # Pass $cfg (ProgressConfig) so ProgressBarColumn can forward it to ProgressBarRenderable
-        $rowRenderables.Add($col.Render($cfg, $task, $this.DeltaTime))
+      for ($i = 0; $i -lt $this.Owner.Columns.Count; $i++) {
+        $col = $this.Owner.Columns[$i]
+        $w = $col.GetColumnWidth($cfg)
+        if ($null -ne $w) {
+            $colWidths[$i] = [Math]::Max($colWidths[$i], [int]$w)
+        } else {
+            $r = $col.Render($cfg, $task, $this.DeltaTime)
+            if ($null -ne $r) {
+                # Guard against any virtual dispatch anomalies
+                $m = @($r)[0].Measure($renderOpts, $maxWidth)
+                $colWidths[$i] = [Math]::Max($colWidths[$i], [int]$m.Max)
+            }
+        }
       }
-      [void]$grid.AddRow($rowRenderables.ToArray())
     }
 
-    return $grid.Render($renderOpts, $maxWidth)
+    # Manual sequence emission
+    foreach ($task in $tasks) {
+      $lineSegments = [List[Segment]]::new()
+      for ($i = 0; $i -lt $this.Owner.Columns.Count; $i++) {
+        $col = $this.Owner.Columns[$i]
+        $renderable = $col.Render($cfg, $task, $this.DeltaTime)
+        if ($null -eq $renderable) { continue }
+        
+        $colW = $colWidths[$i]
+        $rendered = @($renderable)[0].Render($renderOpts, $colW)
+        # Avoid AddRange unwrapping anomalies
+        foreach ($s in $rendered) { $lineSegments.Add($s) }
+        
+        $actualLen = [Segment]::CellCount($rendered)
+        if ($actualLen -lt $colW) {
+          $pad = " " * ($colW - $actualLen)
+          $lineSegments.Add([Segment]::new($pad, [Style]::Plain))
+        }
+        
+        if ($i -lt $this.Owner.Columns.Count - 1) {
+          $lineSegments.Add([Segment]::new(" ", [Style]::Plain))
+        }
+      }
+      
+      if ([Segment]::CellCount($lineSegments) -gt $maxWidth) {
+        foreach ($s in [Segment]::Truncate($lineSegments, $maxWidth)) { $result.Add($s) }
+      } else {
+        foreach ($s in $lineSegments) { $result.Add($s) }
+      }
+      $result.Add([Segment]::LineBreak)
+    }
+
+    return $result.ToArray()
   }
 }
 
