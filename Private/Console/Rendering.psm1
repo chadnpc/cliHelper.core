@@ -164,8 +164,9 @@ class Segment {
 
     # Simple split based on string length for now.
     # TODO: Improve this to handle cluster boundaries.
-    $firstText = $this.Text.Substring(0, $offset)
-    $secondText = $this.Text.Substring($offset)
+    $splitIndex = if ($offset -lt $this.Text.Length) { $offset } else { $this.Text.Length }
+    $firstText = $this.Text.Substring(0, $splitIndex)
+    $secondText = $this.Text.Substring($splitIndex)
     return [ValueTuple[Segment, Segment]]::new(
       [Segment]::new($firstText, $this.Style, $this.IsLineBreak, $this.IsControlCode),
       [Segment]::new($secondText, $this.Style, $this.IsLineBreak, $this.IsControlCode)

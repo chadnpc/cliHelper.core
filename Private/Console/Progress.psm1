@@ -6,6 +6,7 @@ using namespace System.Threading.Tasks
 using module ..\Enums.psm1
 using module ..\Abstracts.psm1
 using module .\Colors.psm1
+using module .\Internal.psm1
 using module .\Rendering.psm1
 using module .\Ansi.psm1
 using module .\Spinners.psm1
@@ -267,33 +268,37 @@ class LiveDisplayRegion : IDisposable {
 
     [Monitor]::Enter($this._syncRoot)
     try {
-      $this.Begin()
+      try {
+        $this.Begin()
 
-      if (!$this._supportsAnsi) {
-        foreach ($line in $lines) {
-          $this._writer.WriteLine($line)
+        if (!$this._supportsAnsi) {
+          foreach ($line in $lines) {
+            $this._writer.WriteLine($line)
+          }
+          return
         }
-        return
-      }
 
-      $targetCount = [Math]::Max($this._lineCount, $lines.Length)
-      if ($this._lineCount -gt 0) {
-        $this._writer.Write(("`e[{0}F" -f $this._lineCount))
-      }
-
-      for ($index = 0; $index -lt $targetCount; $index++) {
-        $this._writer.Write("`e[2K")
-        if ($index -lt $lines.Length) {
-          $this._writer.Write($lines[$index], [Style]::Plain)
+        $targetCount = [Math]::Max($this._lineCount, $lines.Length)
+        if ($this._lineCount -gt 0) {
+          $this._writer.Write(("`e[{0}F" -f $this._lineCount))
         }
-        # Always newline after each line so the cursor sits BELOW the progress
-        # region. This ensures \e[{n}F on the next tick moves back exactly to
-        # the start of the progress area and not one line further up into any
-        # prior Write-Host output.
-        $this._writer.WriteLine()
-      }
 
-      $this._lineCount = $targetCount
+        for ($index = 0; $index -lt $targetCount; $index++) {
+          $this._writer.Write("`e[2K")
+          if ($index -lt $lines.Length) {
+            $this._writer.Write($lines[$index], [Style]::Plain)
+          }
+          # Always newline after each line so the cursor sits BELOW the progress
+          # region. This ensures \e[{n}F on the next tick moves back exactly to
+          # the start of the progress area and not one line further up into any
+          # prior Write-Host output.
+          $this._writer.WriteLine()
+        }
+
+        $this._lineCount = $targetCount
+      } catch {
+        Write-Warning "[LiveDisplayRegion] Render exception: $_"
+      }
     } finally {
       [Monitor]::Exit($this._syncRoot)
     }
@@ -383,14 +388,17 @@ class PercentageColumn : ProgressColumn {
 
   [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
     $pct = $task.Percent()
-    $styleToUse = if ($task.IsFinished) { $this.CompletedStyle } else { $this.Style }
+    $styleToUse = if ($task.get_IsFinished()) { $this.CompletedStyle } else { $this.Style }
     $text = '{0,3:N0}%' -f $pct
     return [Markup]::new($text, $styleToUse)
   }
 }
 
 class SpinnerColumn : ProgressColumn {
-  [Spinner]$Spinner = [SpinnerKnown]::Default
+  [Spinner]$Spinner
+  static [Spinner]$_defaultSpinnerCACHE
+  static [Spinner]$_asciiSpinnerCACHE
+
   [Style]$Style = [Style]::Parse("yellow")
   [Style]$CompletedStyle = [Style]::Parse("green")
   [string]$CompletedText = '✓'
@@ -399,18 +407,53 @@ class SpinnerColumn : ProgressColumn {
   SpinnerColumn() : base() {}
   SpinnerColumn([Progress]$owner) : base($owner) {}
 
-  [Nullable[int]] GetColumnWidth([RenderOptions]$options) { return 1 }
+  hidden [void] EnsureSpinner() {
+    if ($null -eq $this.Spinner -or $null -eq $this.Spinner.Frames) {
+      if ($null -eq [SpinnerColumn]::_defaultSpinnerCACHE) {
+        $s = [Spinner]::new()
+        $s.Name = 'Default'
+        $s.Interval = [TimeSpan]::FromMilliseconds(100)
+        $s.IsUnicode = $true
+        $s.Frames = @('⣷', '⣯', '⣟', '⡿', '⢿', '⣻', '⣽', '⣾')
+        [SpinnerColumn]::_defaultSpinnerCACHE = $s
+      }
+      $this.Spinner = [SpinnerColumn]::_defaultSpinnerCACHE
+    }
+    if ($null -eq [SpinnerColumn]::_asciiSpinnerCACHE) {
+      $s = [Spinner]::new()
+      $s.Name = 'Ascii'
+      $s.Interval = [TimeSpan]::FromMilliseconds(100)
+      $s.IsUnicode = $false
+      $s.Frames = @('-', '\', '|', '/', '-', '\', '|', '/')
+      [SpinnerColumn]::_asciiSpinnerCACHE = $s
+    }
+  }
+
+  [Nullable[int]] GetColumnWidth([RenderOptions]$options) {
+    $this.EnsureSpinner()
+    $frames = if ($options.Unicode -or $this.Spinner.IsUnicode -eq $false) { $this.Spinner.Frames } else { [SpinnerColumn]::_asciiSpinnerCACHE.Frames }
+    if ($null -eq $frames -or $frames.Length -eq 0) { return 1 }
+    
+    $maxWidth = 1
+    foreach ($frame in $frames) {
+      $len = [Cell]::GetCellLength($frame)
+      if ($len -gt $maxWidth) { $maxWidth = $len }
+    }
+    return $maxWidth
+  }
 
   hidden [double]$_accumulated = 0
   hidden [int]$_index = 0
 
   [IRenderable] Render([RenderOptions]$options, [ProgressTaskState]$task, [TimeSpan]$deltaTime) {
-    if (!$task.IsStarted) {
+    if (!$task.get_IsStarted()) {
       return [Markup]::new($this.PendingText, [Style]::Plain)
     }
-    if ($task.IsFinished) {
+    if ($task.get_IsFinished()) {
       return [Markup]::new($this.CompletedText, $this.CompletedStyle)
     }
+
+    $this.EnsureSpinner()
 
     $this._accumulated += $deltaTime.TotalMilliseconds
     if ($this._accumulated -ge $this.Spinner.Interval.TotalMilliseconds) {
@@ -418,7 +461,11 @@ class SpinnerColumn : ProgressColumn {
       $this._index++
     }
 
-    $spinnerList = if ($options.Unicode -or $this.Spinner.IsUnicode -eq $false) { $this.Spinner.Frames } else { [SpinnerKnown]::Ascii.Frames }
+    $spinnerList = if ($options.Unicode -or $this.Spinner.IsUnicode -eq $false) { $this.Spinner.Frames } else { [SpinnerColumn]::_asciiSpinnerCACHE.Frames }
+    if ($null -eq $spinnerList -or $spinnerList.Length -eq 0) {
+      return [Markup]::new(" ", $this.Style)
+    }
+    
     $frame = $spinnerList[$this._index % $spinnerList.Length]
 
     return [Markup]::new($frame, $this.Style)
@@ -485,7 +532,7 @@ class ProgressBarRenderable : IRenderable {
     $filledCount = [Math]::Min($safeWidth, [int][Math]::Floor(($pct / 100) * $safeWidth))
     $emptyCount = [Math]::Max(0, $safeWidth - $filledCount)
 
-    $actualCompStyle = if ($this.Task.IsFinished) { $this.FinishedStyle } else { $this.CompletedStyle }
+    $actualCompStyle = if ($this.Task.get_IsFinished()) { $this.FinishedStyle } else { $this.CompletedStyle }
 
     if ($filledCount -gt 0) {
       $segs.Add([Segment]::new(($block * $filledCount), $actualCompStyle))
@@ -509,70 +556,75 @@ class ProgressRenderable : IRenderable {
   }
 
   [Segment[]] Render([RenderOptions]$options, [int]$maxWidth) {
-    # CRITICAL BUG FIX PRESERVATION (#2 Background Runspaces vs Renderers):
-    # This Progress Engine renders explicitly via linear column formatting instead of using [Grid].
-    # [Grid] leverages recursive TableMeasurers which can fail abruptly with background 
-    # [System.Threading.Timer] threads if [Segment]::Truncate aborts during a tight layout scale.
-    $cfg = if ($options -is [ProgressConfig]) { [ProgressConfig]$options } else { [ProgressConfig]::new() }
-    $tasks = $this.Context.GetTasks()
-    $renderOpts = $cfg.ToRenderOptions()
-    $result = [List[Segment]]::new()
+    try {
+      # CRITICAL BUG FIX PRESERVATION (#2 Background Runspaces vs Renderers):
+      # This Progress Engine renders explicitly via linear column formatting instead of using [Grid].
+      # [Grid] leverages recursive TableMeasurers which can fail abruptly with background 
+      # [System.Threading.Timer] threads if [Segment]::Truncate aborts during a tight layout scale.
+      $cfg = if ($options -is [ProgressConfig]) { [ProgressConfig]$options } else { [ProgressConfig]::new() }
+      $tasks = $this.Context.GetTasks()
+      $renderOpts = $cfg.ToRenderOptions()
+      $result = [List[Segment]]::new()
 
-    # Calculate exact max constraints across all tasks to align them as a simulated grid
-    $colWidths = [int[]]::new($this.Owner.Columns.Count)
-    foreach ($task in $tasks) {
-      for ($i = 0; $i -lt $this.Owner.Columns.Count; $i++) {
-        $col = $this.Owner.Columns[$i]
-        $w = $col.GetColumnWidth($cfg)
-        if ($null -ne $w) {
-            $colWidths[$i] = [Math]::Max($colWidths[$i], [int]$w)
+      # Calculate exact max constraints across all tasks to align them as a simulated grid
+      $colWidths = [int[]]::new($this.Owner.Columns.Count)
+      foreach ($task in $tasks) {
+        for ($i = 0; $i -lt $this.Owner.Columns.Count; $i++) {
+          $col = $this.Owner.Columns[$i]
+          $w = $col.GetColumnWidth($cfg)
+          if ($null -ne $w) {
+              $colWidths[$i] = [Math]::Max($colWidths[$i], [int]$w)
+          } else {
+              # Pass zero DeltaTime during measurement phase to prevent double-ticking animations
+              $r = $col.Render($cfg, $task, [TimeSpan]::Zero)
+              if ($null -ne $r) {
+                  # CRITICAL BUG FIX PRESERVATION (#3 PowerShell Polymorphism):
+                  # We wrap $r inside an array @($r)[0] to guarantee we evaluate the concrete instance.
+                  # In certain PS versions passing interfaces natively over virtual tables fails dispatching to inherited classes.
+                  $m = @($r)[0].Measure($renderOpts, $maxWidth)
+                  $colWidths[$i] = [Math]::Max($colWidths[$i], [int]$m.Max)
+              }
+          }
+        }
+      }
+
+      # Manual sequence emission
+      foreach ($task in $tasks) {
+        $lineSegments = [List[Segment]]::new()
+        for ($i = 0; $i -lt $this.Owner.Columns.Count; $i++) {
+          $col = $this.Owner.Columns[$i]
+          $renderable = $col.Render($cfg, $task, $this.DeltaTime)
+          if ($null -eq $renderable) { continue }
+          
+          $colW = $colWidths[$i]
+          $rendered = @($renderable)[0].Render($renderOpts, $colW)
+          # Avoid AddRange unwrapping anomalies
+          foreach ($s in $rendered) { $lineSegments.Add($s) }
+          
+          $actualLen = [Segment]::CellCount($rendered)
+          if ($actualLen -lt $colW) {
+            $pad = " " * ($colW - $actualLen)
+            $lineSegments.Add([Segment]::new($pad, [Style]::Plain))
+          }
+          
+          if ($i -lt $this.Owner.Columns.Count - 1) {
+            $lineSegments.Add([Segment]::new(" ", [Style]::Plain))
+          }
+        }
+        
+        if ([Segment]::CellCount($lineSegments) -gt $maxWidth) {
+          foreach ($s in [Segment]::Truncate($lineSegments, $maxWidth)) { $result.Add($s) }
         } else {
-            # Pass zero DeltaTime during measurement phase to prevent double-ticking animations
-            $r = $col.Render($cfg, $task, [TimeSpan]::Zero)
-            if ($null -ne $r) {
-                # CRITICAL BUG FIX PRESERVATION (#3 PowerShell Polymorphism):
-                # We wrap $r inside an array @($r)[0] to guarantee we evaluate the concrete instance.
-                # In certain PS versions passing interfaces natively over virtual tables fails dispatching to inherited classes.
-                $m = @($r)[0].Measure($renderOpts, $maxWidth)
-                $colWidths[$i] = [Math]::Max($colWidths[$i], [int]$m.Max)
-            }
+          foreach ($s in $lineSegments) { $result.Add($s) }
         }
+        $result.Add([Segment]::LineBreak)
       }
-    }
 
-    # Manual sequence emission
-    foreach ($task in $tasks) {
-      $lineSegments = [List[Segment]]::new()
-      for ($i = 0; $i -lt $this.Owner.Columns.Count; $i++) {
-        $col = $this.Owner.Columns[$i]
-        $renderable = $col.Render($cfg, $task, $this.DeltaTime)
-        if ($null -eq $renderable) { continue }
-        
-        $colW = $colWidths[$i]
-        $rendered = @($renderable)[0].Render($renderOpts, $colW)
-        # Avoid AddRange unwrapping anomalies
-        foreach ($s in $rendered) { $lineSegments.Add($s) }
-        
-        $actualLen = [Segment]::CellCount($rendered)
-        if ($actualLen -lt $colW) {
-          $pad = " " * ($colW - $actualLen)
-          $lineSegments.Add([Segment]::new($pad, [Style]::Plain))
-        }
-        
-        if ($i -lt $this.Owner.Columns.Count - 1) {
-          $lineSegments.Add([Segment]::new(" ", [Style]::Plain))
-        }
-      }
-      
-      if ([Segment]::CellCount($lineSegments) -gt $maxWidth) {
-        foreach ($s in [Segment]::Truncate($lineSegments, $maxWidth)) { $result.Add($s) }
-      } else {
-        foreach ($s in $lineSegments) { $result.Add($s) }
-      }
-      $result.Add([Segment]::LineBreak)
+      return $result.ToArray()
+    } catch {
+      Write-Warning "[ProgressRenderable] Render exception: $_"
+      return @([Segment]::new(" [Render Error] ", [Style]::Plain))
     }
-
-    return $result.ToArray()
   }
 }
 
@@ -596,31 +648,35 @@ class ProgressLiveSession {
   }
 
   [void] Tick([object]$state) {
-    $now = [DateTime]::UtcNow
-    $delta = $now - $this.LastUpdate
-    $this.LastUpdate = $now
+    try {
+      $now = [DateTime]::UtcNow
+      $delta = $now - $this.LastUpdate
+      $this.LastUpdate = $now
 
-    $renderable = [ProgressRenderable]::new($this.Owner, $this.Context, $delta)
+      $renderable = [ProgressRenderable]::new($this.Owner, $this.Context, $delta)
 
-    $options = [ProgressConfig]::Create($this.Owner.Writer, $this.Owner.Writer.Capabilities)
-    [Segment[]]$segs = $renderable.Render($options, $this.Owner.GetRenderWidth())
-    $lines = [Segment]::SplitLines($segs, $this.Owner.GetRenderWidth())
+      $options = [ProgressConfig]::Create($this.Owner.Writer, $this.Owner.Writer.Capabilities)
+      [Segment[]]$segs = $renderable.Render($options, $this.Owner.GetRenderWidth())
+      $lines = [Segment]::SplitLines($segs, $this.Owner.GetRenderWidth())
 
-    $renderedLines = [List[string]]::new()
-    foreach ($line in $lines) {
-      $sb = [Text.StringBuilder]::new()
-      foreach ($seg in $line.Segments) {
-        $hasColor = $this.Owner.Writer.Capabilities.Ansi -and $null -ne $seg.Style -and $seg.Style -ne [Style]::Plain
-        if ($hasColor) { [void]$sb.Append("`e[" + [AnsiCodeBuilder]::GetAnsi($seg.Style, $this.Owner.Writer.Capabilities.ColorSystem) + "m") }
-        [void]$sb.Append($seg.Text)
-        if ($hasColor) { [void]$sb.Append("`e[0m") }
+      $renderedLines = [List[string]]::new()
+      foreach ($line in $lines) {
+        $sb = [Text.StringBuilder]::new()
+        foreach ($seg in $line.Segments) {
+          $hasColor = $this.Owner.Writer.Capabilities.Ansi -and $null -ne $seg.Style -and $seg.Style -ne [Style]::Plain
+          if ($hasColor) { [void]$sb.Append("`e[" + [AnsiCodeBuilder]::GetAnsi($seg.Style, $this.Owner.Writer.Capabilities.ColorSystem) + "m") }
+          [void]$sb.Append($seg.Text)
+          if ($hasColor) { [void]$sb.Append("`e[0m") }
+        }
+        $renderedLines.Add($sb.ToString())
       }
-      $renderedLines.Add($sb.ToString())
-    }
 
-    $this.LastLines = $renderedLines.ToArray()
-    $this.Frame++
-    $this.Display.Render($this.LastLines)
+      $this.LastLines = $renderedLines.ToArray()
+      $this.Frame++
+      $this.Display.Render($this.LastLines)
+    } catch {
+      Write-Warning "[ProgressLiveSession] Tick exception: $_"
+    }
   }
 }
 
