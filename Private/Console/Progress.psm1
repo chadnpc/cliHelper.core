@@ -455,7 +455,7 @@ class ProgressBarRenderable : IRenderable {
       $segs.Add([Segment]::new(($options.ProgressBlock * $filledCount), $actualCompStyle))
     }
     if ($emptyCount -gt 0) {
-      $segs.Add([Segment]::new(('-' * $emptyCount), $this.RemainingStyle))
+      $segs.Add([Segment]::new(('=' * $emptyCount), $this.RemainingStyle))
     }
     return $segs.ToArray()
   }
