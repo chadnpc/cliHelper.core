@@ -165,6 +165,11 @@ class ProgressConfig : RenderOptions {
   [RenderOptions] ToRenderOptions() {
     # copy all base properties
     $o = [RenderOptions]@{}
+    
+    # CRITICAL BUG FIX PRESERVATION (#1 PowerShell ETS):
+    # This loop MUST iterate over $o.PsObject.Properties, NOT $this!
+    # $this (ProgressConfig) dynamically injects PSScriptProperties like 'ShowProgress'.
+    # Iterating over $this would attempt to assign these to $o, aborting the timer thread.
     foreach ($name in $o.PsObject.Properties.Name) {
         $o.$name = $this.$name
     }
@@ -504,6 +509,10 @@ class ProgressRenderable : IRenderable {
   }
 
   [Segment[]] Render([RenderOptions]$options, [int]$maxWidth) {
+    # CRITICAL BUG FIX PRESERVATION (#2 Background Runspaces vs Renderers):
+    # This Progress Engine renders explicitly via linear column formatting instead of using [Grid].
+    # [Grid] leverages recursive TableMeasurers which can fail abruptly with background 
+    # [System.Threading.Timer] threads if [Segment]::Truncate aborts during a tight layout scale.
     $cfg = if ($options -is [ProgressConfig]) { [ProgressConfig]$options } else { [ProgressConfig]::new() }
     $tasks = $this.Context.GetTasks()
     $renderOpts = $cfg.ToRenderOptions()
@@ -520,7 +529,9 @@ class ProgressRenderable : IRenderable {
         } else {
             $r = $col.Render($cfg, $task, $this.DeltaTime)
             if ($null -ne $r) {
-                # Guard against any virtual dispatch anomalies
+                # CRITICAL BUG FIX PRESERVATION (#3 PowerShell Polymorphism):
+                # We wrap $r inside an array @($r)[0] to guarantee we evaluate the concrete instance.
+                # In certain PS versions passing interfaces natively over virtual tables fails dispatching to inherited classes.
                 $m = @($r)[0].Measure($renderOpts, $maxWidth)
                 $colWidths[$i] = [Math]::Max($colWidths[$i], [int]$m.Max)
             }
