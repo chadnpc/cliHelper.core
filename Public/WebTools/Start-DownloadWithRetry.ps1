@@ -12,16 +12,18 @@
       cat $d.FullName | Write-Console -f Red
 
     .EXAMPLE
-      $baseUri = 'https://github.com/PowerShell/PowerShell/releases/download'
+      $outfiles = @()
+      $baseUri = 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720'
       @(
-        "$baseUri/v7.3.0-preview.5/PowerShell-7.3.0-preview.5-win-x64.msi"
-        "$baseUri/v7.3.0-preview.5/PowerShell-7.3.0-preview.5-win-x64.zip"
-        "$baseUri/v7.2.5/PowerShell-7.2.5-win-x64.zip"
-        "$baseUri/v7.2.5/PowerShell-7.2.5-win-x64.msi"
-      ) | % { Start-DownloadWithRetry $_ }
+        "$baseUri/Big_Buck_Bunny_720_10s_1MB.mp4"
+        "$baseUri/Big_Buck_Bunny_720_10s_2MB.mp4"
+        "$baseUri/Big_Buck_Bunny_720_10s_5MB.mp4"
+        "$baseUri/Big_Buck_Bunny_720_10s_10MB.mp4"
+      ) | % { $outfiles += Start-DownloadWithRetry $_ }
+      $outfiles
 
     .EXAMPLE
-      Start-DownloadWithRetry -Uri "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_5mb.mp4" -Name "mysamplevideo.mp4" -DownloadPath $pwd
+      Start-DownloadWithRetry -Uri "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_5MB.mp4" -Name "mysamplevideo.mp4" -DownloadPath $pwd
 
       Downloads a video to mysamplevideo.mp4 from the specified Uri and saves it as 'mysamplevideo.mp4' in the $pwd directory.
 
