@@ -14,7 +14,6 @@ class DownloadHelper {
     $this.Id = [Guid]::NewGuid().Guid.replace('-', '').SubString(0, 20)
     $this.PsObject.Properties.Add([PSScriptProperty]::new('Data', [scriptblock]::Create("`$e = Get-Event -SourceIdentifier $($this.Id) -ea Ignore; if (`$e) { return `$e[-1].SourceEventArgs }; return `$null")))
     $Options = [pscustomobject]@{
-      ShowProgress    = $true
       ProgressMessage = [string]::Empty
       RetryTimeout    = 1000
       Headers         = @{}
@@ -22,6 +21,7 @@ class DownloadHelper {
       Force           = $false
     }
     $Options.PsObject.Properties.Add([PSScriptProperty]::new('ProgressBarLength', [scriptblock]::Create("return [int]([ConsoleWriter]::get_ConsoleWidth() * 0.7)")))
+    $Options.PsObject.Properties.Add([PSScriptProperty]::new('ShowProgress', [scriptblock]::Create("return (`$global:ProgressPreference -eq 'Continue')")))
     $this.DownloadOptions = $Options
   }
   [string] GetfileSize([long]$Bytes) {
@@ -79,6 +79,7 @@ class DownloadHelper {
     $totalBytesToReceive = $contentLength
     $OgForeground = (Get-Variable host).Value.UI.RawUI.ForegroundColor
     $Progress_Msg = $this.DownloadOptions.ProgressMessage
+    $show_progress = $this.DownloadOptions.ShowProgress
     if ([string]::IsNullOrWhiteSpace($Progress_Msg)) { $Progress_Msg = "[+] Downloading $name to $outFile" }
     Write-Host $Progress_Msg -ForegroundColor Magenta
     $(Get-Variable host).Value.UI.RawUI.ForegroundColor = [ConsoleColor]::Green
@@ -87,7 +88,7 @@ class DownloadHelper {
       $totalBytesReceived += $bytesRead
       $totalBytesToReceive -= $bytesRead
       $fileStream.Write($buffer, 0, $bytesRead)
-      if ($this.DownloadOptions.ShowProgress) {
+      if ($show_progress) {
         [int]$PMetric = [math]::Round($totalBytesReceived / $contentLength * 100)
         [ProgressUtil]::WriteProgressBar($PMetric, $true, $this.DownloadOptions.ProgressBarLength)
       }
@@ -97,6 +98,7 @@ class DownloadHelper {
     return (Get-Item $outFile)
   }
   [IO.FileInfo] DownloadFileAsync([uri]$Uri, [string]$OutFile, $dlEvent, [bool]$verbose) {
+    $show_progress = $this.DownloadOptions.ShowProgress
     try {
       $webClient = [System.Net.WebClient]::new()
       # $webClient.Credentials = $login
@@ -108,7 +110,7 @@ class DownloadHelper {
           $ReceivedData = $dlEvent.Data.BytesReceived
           $TotalToReceive = $dlEvent.Data.TotalBytesToReceive
           $TotalPercent = $dlEvent.Data.ProgressPercentage
-          if ($null -ne $ReceivedData) {
+          if ($null -ne $ReceivedData -and $show_progress) {
             [ProgressUtil]::WriteProgressBar([int]$TotalPercent, "  Downloading : $($dlEvent.GetSizeProgress($ReceivedData, $TotalToReceive))")
           }
         }
@@ -118,13 +120,14 @@ class DownloadHelper {
       Write-Console $_.Exception.Message -f Salmon
       throw $_
     } finally {
-      if ($dlEvent.Data.BytesReceived -eq $dlEvent.Data.TotalBytesToReceive) {
-        [ProgressUtil]::WriteProgressBar(100, $true, "  Downloaded $($dlEvent.GetSizeProgress())", $true)
-      } else {
-        # WriteProgressBar(int percent, bool update, int PBLength, string message, bool Completed, string PBcolor)
-        [ProgressUtil]::WriteProgressBar(0, $true, "  Download Failed: $($Uri.AbsoluteUri)", $true, "Red")
+      if ($show_progress) {
+        if ($dlEvent.Data.BytesReceived -eq $dlEvent.Data.TotalBytesToReceive) {
+          [ProgressUtil]::WriteProgressBar(100, $true, "  Downloaded $($dlEvent.GetSizeProgress())", $true)
+        } else {
+          # WriteProgressBar(int percent, bool update, int PBLength, string message, bool Completed, string PBcolor)
+          [ProgressUtil]::WriteProgressBar(0, $true, "  Download Failed: $($Uri.AbsoluteUri)", $true, "Red")
+        }
       }
-
       if ([IO.File]::Exists($OutFile)) {
         $verbose ? (Write-Console "  OutPath: '$OutFile'" -f SteelBlue) : $null
       }
