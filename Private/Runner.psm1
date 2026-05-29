@@ -33,8 +33,8 @@ class JobResult : Result {
   # ── Convenience read-through properties ─────────────────────────────────
   # These let existing call-sites use the old names without change.
   [bool]   get_Success() { return $this.IsOk() }
-  [object] get_Output()  { return $this.UnwrapOrDefault() }
-  [object] get_Error()   { return if ($this.IsErr()) { $this.UnwrapErr() } else { $null } }
+  [object] get_Output() { return $this.UnwrapOrDefault() }
+  [object] get_Error() { return if ($this.IsErr()) { $this.UnwrapErr() } else { $null } }
 
   # Private constructor — use the static factories below.
   hidden JobResult([ResultKind]$kind, [object]$value, [object]$err) : base($kind, $value, $err) {}
@@ -43,8 +43,8 @@ class JobResult : Result {
   # Pending placeholder — no result yet.
   static [JobResult] Pending([int]$index, [string]$name) {
     $jr = [JobResult]::new([ResultKind]::Ok, $null, $null)
-    $jr.Index  = $index
-    $jr.Name   = $name
+    $jr.Index = $index
+    $jr.Name = $name
     $jr.Status = 'Pending'
     return $jr
   }
@@ -52,31 +52,30 @@ class JobResult : Result {
   # Successful completion carrying an output value.
   static [JobResult] FromOk([int]$index, [string]$name, [object]$output, [int]$durationMs, [System.Diagnostics.Stopwatch]$sw) {
     $jr = [JobResult]::new([ResultKind]::Ok, $output, $null)
-    $jr.Index       = $index
-    $jr.Name        = $name
-    $jr.Status      = 'Completed'
-    $jr.DurationMs  = $durationMs
-    $jr.Stopwatch   = $sw
+    $jr.Index = $index
+    $jr.Name = $name
+    $jr.Status = 'Completed'
+    $jr.DurationMs = $durationMs
+    $jr.Stopwatch = $sw
     return $jr
   }
 
   # Failed completion carrying an error descriptor.
-  static [JobResult] FromErr([int]$index, [string]$name, [object]$error, [int]$durationMs, [System.Diagnostics.Stopwatch]$sw) {
+  static [JobResult] FromErr([int]$index, [string]$name, [object]$ErrorRecord, [int]$durationMs, [System.Diagnostics.Stopwatch]$sw) {
     # Guard: Err() in the base class rejects $null — supply a fallback string.
-    $safeErr = if ($null -ne $error) { $error } else { 'Unknown error' }
+    $safeErr = if ($null -ne $ErrorRecord) { $ErrorRecord } else { 'Unknown error' }
     $jr = [JobResult]::new([ResultKind]::Err, $null, $safeErr)
-    $jr.Index       = $index
-    $jr.Name        = $name
-    $jr.Status      = 'Failed'
-    $jr.DurationMs  = $durationMs
-    $jr.Stopwatch   = $sw
+    $jr.Index = $index
+    $jr.Name = $name
+    $jr.Status = 'Failed'
+    $jr.DurationMs = $durationMs
+    $jr.Stopwatch = $sw
     return $jr
   }
 
-  # ── Retained utility ────────────────────────────────────────────────────
   # Strip ANSI markup from display strings so summary output is clean.
   [void] RemoveMarkup() {
-    $this.Name   = [AnsiMarkup]::Remove($this.Name)
+    $this.Name = [AnsiMarkup]::Remove($this.Name)
     $this.Status = [AnsiMarkup]::Remove($this.Status)
   }
 }
@@ -120,10 +119,10 @@ class BackgroundJob {
     $this.Arguments = $Argumentlist
   }
   BackgroundJob([int]$Index, [string]$Name, [ScriptBlock]$command, [object[]]$Argumentlist) {
-    $this.Index       = $Index
-    $this.Name        = if ($Name) { $Name } else { "Job $($Index.ToString('D2'))" }
+    $this.Index = $Index
+    $this.Name = if ($Name) { $Name } else { "Job $($Index.ToString('D2'))" }
     $this.ScriptBlock = $command
-    $this.Arguments   = $Argumentlist
+    $this.Arguments = $Argumentlist
     # Use the Pending factory — no result yet, but metadata is set.
     $this.Result = [JobResult]::Pending($Index, $this.Name)
   }
@@ -763,8 +762,8 @@ class ThreadRunner {
             $output = $job.PowerShellInstance.EndInvoke($job.AsyncHandle)
             if ($job.PowerShellInstance.HadErrors) {
               # ── Err path: capture error safely via JobResult.FromErr ──────
-              $job.Status  = 'Failed'
-              $errors      = $job.PowerShellInstance.Streams.Error
+              $job.Status = 'Failed'
+              $errors = $job.PowerShellInstance.Streams.Error
               $firstErrMsg = $errors[0].Exception.Message
               $MoreAbouttheError = $errors[0] | Format-List * -Force | Out-String
               $ErrorRecords = [PSDataCollection[ErrorRecord]]::new()
@@ -777,7 +776,7 @@ class ThreadRunner {
             } else {
               # ── Ok path: wrap output safely via JobResult.FromOk ─────────
               $job.Progress = 100
-              $job.Status   = 'Completed'
+              $job.Status = 'Completed'
               $resolvedOutput = if ($output.Count -eq 1) { $output[0] } else { $output }
               $job.Result = [JobResult]::FromOk(
                 $job.Index, $job.Name, $resolvedOutput,
