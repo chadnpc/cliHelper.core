@@ -146,6 +146,60 @@ class AsyncResult : System.IAsyncResult {
   [string] ToString() { return '[{0}] {1}' -f $this.AsyncState, $this.Handle.value }
 }
 
+class ProcessMonitor {
+  [Hashtable]$ProcessTable
+  [System.Timers.Timer]$Timer
+
+  ProcessMonitor() {
+    $this.ProcessTable = @{}
+    $this.Timer = [System.Timers.Timer]::new()
+    $this.Timer.Interval = 1000
+  }
+
+  # Register the timer's Elapsed event, capturing $this via $monitor ref
+  [void] StartTimer() {
+    $monitor = $this
+
+    Register-ObjectEvent -InputObject $this.Timer -EventName Elapsed -Action {
+      $keys = @($monitor.ProcessTable.Keys)   # snapshot to allow mutation mid-loop
+
+      foreach ($id in $keys) {
+        try {
+          $running = Get-Process -Id $id -ErrorAction SilentlyContinue
+          if (!$running -and $monitor.ProcessTable.ContainsKey($id)) {
+            $name = $monitor.ProcessTable[$id].ProcessName
+            Write-Host "Process stopped: $name (ID: $id)" -ForegroundColor Red
+            $monitor.ProcessTable.Remove($id)
+          }
+        } catch {
+          $name = $monitor.ProcessTable[$id].ProcessName
+          Write-Host "Process stopped: $name (ID: $id)" -ForegroundColor Red
+          $monitor.ProcessTable.Remove($id)
+        }
+      }
+    } | Out-Null   # suppress the EventJob object from polluting output
+
+    $this.Timer.Start()
+  }
+
+  # Track a new process (idempotent — silently skips if already tracked)
+  [void] Track([System.Diagnostics.Process] $process) {
+    if (!$this.ProcessTable.ContainsKey($process.Id)) {
+      Write-Host "Now monitoring process: $($process.ProcessName) (ID: $($process.Id))" -ForegroundColor Green
+      $this.ProcessTable[$process.Id] = @{
+        ProcessName = $process.ProcessName
+        StartTime   = $process.StartTime
+      }
+    }
+  }
+
+  # Tear down the timer cleanly
+  [void] Stop() {
+    $this.Timer.Stop()
+    $this.Timer.Dispose()
+    Write-Host "Stopped monitoring processes" -ForegroundColor Yellow
+  }
+}
 class ProgressTheme {
   [Color]$BarColor
   [Color]$CompletedColor
