@@ -35,7 +35,6 @@ using module .\Console\Tree.psm1
 using module .\Console\Ui.psm1
 using module .\Console\Utilities.psm1
 using module .\Console\Widgets.psm1
-using module .\Runner.psm1
 
 # todo : a console-convenience helper class to demo the features
 class ConsoleHelper {
@@ -210,7 +209,7 @@ class ConsoleHelper {
   }
   static [void] DemoSimultaneousBackgroundJobsWithFailures() {
     ## run multiple jobs in parallel:
-    $Jobs = [BackgroundJob[]](
+    $Jobs = (
       @{
         Name        = "Compute Primes"
         ScriptBlock = {
@@ -299,9 +298,10 @@ class ConsoleHelper {
         }
         Arguments   = @(15)
       }
-    )
-
-    $results = [JobResult[]][ThreadRunner]::Run("Doing epic stuff in the background...", $Jobs)
+    ) -as ([type]"BackgroundJob[]")
+    $runnerType = [type]"ThreadRunner"
+    # get JobResult[] result
+    $results = $runnerType::Run("Doing epic stuff in the background...", $Jobs)
     $results | Out-Null
   }
   static [void] DemoStatus() {
