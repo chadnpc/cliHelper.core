@@ -12,7 +12,7 @@
   .EXAMPLE
       $results = 1..5 | ForEach-Object { [Result]::Ok($_ * 10) }
       $combined = $results | Merge-Results
-      # Ok(@(10, 20, 30, 40, 50))
+      # Ok(System.Object[])
 
   .EXAMPLE
       @(
