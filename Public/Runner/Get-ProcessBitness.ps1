@@ -1,17 +1,23 @@
 ﻿function Get-ProcessBitness {
   <#
   .SYNOPSIS
-    A short one-line action-based description, e.g. 'Tests if a function is valid'
+    Tests if a process is 32-bit or 64-bit.
   .DESCRIPTION
-    A longer description of the function, its purpose, common use cases, etc.
+    Retrieves the bitness of a process by checking the Wow64Process flag.
+    This function uses P/Invoke to call the Windows API function IsWow64Process.
   .NOTES
-    Information or caveats about the function e.g. 'This function is not supported in Linux'
+    Only works on Windows.
+    Requires elevated privileges to check all processes.
+  .LINK
+    https://github.com/chadnpc/cliHelper.core/blob/main/Public/Runner/Get-ProcessBitness.ps1
   .LINK
     https://rkeithhill.wordpress.com/2014/04/28/how-to-determine-if-a-process-is-32-or-64-bit/
+  .EXAMPLE
+    Get-ProcessBitness 1234
+    Get-ProcessBitness explorer
   #>
   [CmdletBinding()]
   param (
-    # Parameter help description
     [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
     [int[]]$Ids
   )
