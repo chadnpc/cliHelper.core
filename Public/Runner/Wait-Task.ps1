@@ -21,8 +21,8 @@ function Wait-Task {
   #.OUTPUTS
   #  [PsObject] (or [Results] when -PassThru is used)
   [CmdletBinding(DefaultParameterSetName = 'ScriptBlock')]
-  [OutputType([PsObject])][Alias('await')]
-  Param (
+  [OutputType([Results])][Alias('await')]
+  param (
     [Parameter(Mandatory = $false, Position = 0, ParameterSetName = 'Job')]
     [Parameter(Mandatory = $false, Position = 0, ParameterSetName = 'ScriptBlock')]
     [Alias('m')][ValidateNotNullOrEmpty()]
@@ -43,24 +43,24 @@ function Wait-Task {
     [switch]$PassThru
   )
   begin {
-    [Results]$results = $null
+    $results = $null
   }
   process {
     if ($PSCmdlet.ParameterSetName -eq 'ScriptBlock') {
-      $results = [ProgressUtil]::WaitJob($ProgressMsg, $ScriptBlock, $ArgumentList)
+      $results = [Results][ProgressUtil]::WaitJob($ProgressMsg, $ScriptBlock, $ArgumentList)
     } else {
-      $results = [ProgressUtil]::WaitJob($ProgressMsg, $Job)
+      $results = [Results][ProgressUtil]::WaitJob($ProgressMsg, $Job)
     }
   }
   end {
     if ($PassThru) {
       return $results
-    }
-    if ($results.HasErrors) {
+    } elseif ($results.HasErrors) {
       foreach ($err in $results.Errors) {
         Write-Error $err -ErrorAction Continue
       }
+    } else {
+      return $results.Output
     }
-    return $results.Output
   }
 }
