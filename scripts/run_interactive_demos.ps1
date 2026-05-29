@@ -15,30 +15,23 @@ $demos = @{
   DemoAnsiInThreadrunner                     = "Ansi color ouptut in Threadrunner"
   DemoFailingTaskInThreadrunner              = "How threadrunner handles failing tasks"
   DemoSimultaneousBackgroundJobsWithFailures = "Simultaneous Background Jobs with Failures"
-  # DemoStatus                    = "Status with Spinner." # failing - crashing
+  DemoStatus                                 = "Status with Spinner." # failing - crashing
   DemoTextPrompt                             = "Text Prompt"
   DemoConfirmPrompt                          = "Confirmation Prompt"
   DemoSelectionPrompt                        = "Selection Prompt"
   DemoMultiSelectionPrompt                   = "MultiSelection Prompt"
   DemoCliArt                                 = "CliArt"
 }
-$results = [System.Collections.Generic.List[PsCustomObject]]::new()
+$errors = [System.Collections.Generic.List[ErrorRecord]]::new()
 $demos.Keys.ForEach({
     Write-Console "[+] " -NoNewLine; Write-Console $demos[$_] -f LimeGreen
-    $failed = $false
     try {
       [ConsoleHelper]::$_()
     } catch {
-      $failed = $true
-      Write-Host "An error occurred. (Message: $($_.Exception.Message))" -ForegroundColor Red
+      $errors.Add($_)
     } finally {
-      if ($failed) {
-        Write-Host "The command failed." -ForegroundColor Red
-        $Error[0] | Format-List * -Force
-      } else {
-        $Host.UI.WriteLine()
-      }
+      $Host.UI.WriteLine()
     }
   }
 )
-return $results.ToArray()
+return $errors.ToArray()
