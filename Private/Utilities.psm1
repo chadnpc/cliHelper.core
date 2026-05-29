@@ -168,7 +168,7 @@ class ProgressUtil {
     # Static constructor: build $data explicitly to avoid PsRecord's broken implicit
     # hashtable-cast (which fails on non-hashtable values like string arrays & scriptblocks).
     $d = [PsRecord]::new()
-    $d.Add('ShowProgress', [scriptblock] { return (Get-Variable 'VerbosePreference' -ValueOnly) -eq 'Continue' })
+    $d.Add('ShowProgress', [scriptblock] { return (Get-Variable 'ProgressPreference' -ValueOnly) -eq 'Continue' })
     $d.Add('DefaultProgressMsg', 'Running background task')
     $d.Add('ProgressBarColor', 'LightSeaGreen')
     $d.Add('ProgressMsgColor', 'LightGoldenrodYellow')
@@ -329,7 +329,7 @@ class ProgressUtil {
   }
   static [void] ToggleShowProgress() {
     # .DESCRIPTION
-    # The ShowProgress option respects $verbosepreference, this method enables you to take control of that and set/toggle it manualy.
+    # The ShowProgress option respects $ProgressPreference, this method enables you to take control of that and set/toggle it manualy.
     [ProgressUtil]::data.Set('ShowProgress', [scriptblock]::Create(" return [bool]$([int]![ProgressUtil]::data.ShowProgress)"))
   }
 }

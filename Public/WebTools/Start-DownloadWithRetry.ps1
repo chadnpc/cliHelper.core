@@ -9,6 +9,7 @@
 
     .EXAMPLE
       $d = Start-DownloadWithRetry -Uri "https://pastebin.com/raw/JVciSv1S"
+      cat $d.FullName | Write-Console -f Red
 
     .EXAMPLE
       $baseUri = 'https://github.com/PowerShell/PowerShell/releases/download'
@@ -17,7 +18,7 @@
         "$baseUri/v7.3.0-preview.5/PowerShell-7.3.0-preview.5-win-x64.zip"
         "$baseUri/v7.2.5/PowerShell-7.2.5-win-x64.zip"
         "$baseUri/v7.2.5/PowerShell-7.2.5-win-x64.msi"
-      ) | % { Start-DownloadWithRetry $_}
+      ) | % { Start-DownloadWithRetry $_ }
 
     .EXAMPLE
       Start-DownloadWithRetry -Uri "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_5mb.mp4" -Name "mysamplevideo.mp4" -DownloadPath $pwd
@@ -100,7 +101,7 @@
     try {
       $use_verbose = $VerbosePreference -eq 'Continue' -or $verbose.IsPresent
       $SplatParams = @{
-        ScriptBlock            = { param([uri]$Uri, [string]$OutFile, $dlEvent, [bool]$verbose) return [IO.FileInfo][DownloadHelper]::DownloadFileAsync($Uri, $OutFile, $dlEvent, $verbose) }
+        ScriptBlock            = { param([uri]$Uri, [string]$OutFile, $dlEvent, [bool]$verbose) $dlh = [DownloadHelper]::New(); return [IO.FileInfo]$dlh.DownloadFileAsync($Uri, $OutFile, $dlEvent, $verbose) }
         ArgumentList           = @([uri]$Uri, [string]$OutputFilePath, [DownloadHelper]::New(), [bool]$use_verbose)
         MaxAttempts            = $Retries
         SecondsBetweenAttempts = $SecondsBetweenAttempts

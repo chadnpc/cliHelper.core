@@ -9,18 +9,20 @@ using module .\Utilities.psm1
 # downloadhelper
 class DownloadHelper {
   [string]$Id
-  static [PsRecord] $DownloadOptions = @{
-    ShowProgress      = $true
-    ProgressBarLength = { return [int]([ConsoleWriter]::get_ConsoleWidth() * 0.7) }
-    ProgressMessage   = [string]::Empty
-    RetryTimeout      = 1000
-    Headers           = @{}
-    Proxy             = $null
-    Force             = $false
-  }
+  hidden [pscustomobject] $DownloadOptions
   DownloadHelper() {
     $this.Id = [Guid]::NewGuid().Guid.replace('-', '').SubString(0, 20)
     $this.PsObject.Properties.Add([PSScriptProperty]::new('Data', [scriptblock]::Create("`$e = Get-Event -SourceIdentifier $($this.Id) -ea Ignore; if (`$e) { return `$e[-1].SourceEventArgs }; return `$null")))
+    $Options = [pscustomobject]@{
+      ShowProgress    = $true
+      ProgressMessage = [string]::Empty
+      RetryTimeout    = 1000
+      Headers         = @{}
+      Proxy           = $null
+      Force           = $false
+    }
+    $Options.PsObject.Properties.Add([PSScriptProperty]::new('ProgressBarLength', [scriptblock]::Create("return [int]([ConsoleWriter]::get_ConsoleWidth() * 0.7)")))
+    $this.DownloadOptions = $Options
   }
   [string] GetfileSize([long]$Bytes) {
     $sizestr = switch ($bytes) {
@@ -41,16 +43,16 @@ class DownloadHelper {
     return "{0} / {1}" -f $($this.GetfileSize($r)), $($this.GetfileSize($t))
   }
 
-  static [IO.FileInfo] DownloadFile([uri]$url) {
+  [IO.FileInfo] DownloadFile([uri]$url) {
     $randomSuffix = [Guid]::NewGuid().Guid.subString(15).replace('-', [string]::Join('', (0..9 | Get-Random -Count 1)))
-    return [DownloadHelper]::DownloadFile($url, "$(Split-Path $url.AbsolutePath -Leaf)_$randomSuffix")
+    return $this.DownloadFile($url, "$(Split-Path $url.AbsolutePath -Leaf)_$randomSuffix")
   }
 
-  static [IO.FileInfo] DownloadFile([uri]$url, [string]$outFile) {
-    return [DownloadHelper]::DownloadFile($url, $outFile, $false)
+  [IO.FileInfo] DownloadFile([uri]$url, [string]$outFile) {
+    return $this.DownloadFile($url, $outFile, $false)
   }
 
-  static [IO.FileInfo] DownloadFile([uri]$url, [string]$outFile, [bool]$Force) {
+  [IO.FileInfo] DownloadFile([uri]$url, [string]$outFile, [bool]$Force) {
     [ValidateNotNullOrEmpty()][uri]$url = $url
     [ValidateNotNullOrEmpty()][string]$outFile = $outFile
     $stream = $null; $fileStream = $null
@@ -76,7 +78,7 @@ class DownloadHelper {
     $totalBytesReceived = 0
     $totalBytesToReceive = $contentLength
     $OgForeground = (Get-Variable host).Value.UI.RawUI.ForegroundColor
-    $Progress_Msg = [DownloadHelper]::DownloadOptions.ProgressMessage
+    $Progress_Msg = $this.DownloadOptions.ProgressMessage
     if ([string]::IsNullOrWhiteSpace($Progress_Msg)) { $Progress_Msg = "[+] Downloading $name to $outFile" }
     Write-Host $Progress_Msg -ForegroundColor Magenta
     $(Get-Variable host).Value.UI.RawUI.ForegroundColor = [ConsoleColor]::Green
@@ -85,16 +87,16 @@ class DownloadHelper {
       $totalBytesReceived += $bytesRead
       $totalBytesToReceive -= $bytesRead
       $fileStream.Write($buffer, 0, $bytesRead)
-      if ([DownloadHelper]::DownloadOptions.ShowProgress) {
+      if ($this.DownloadOptions.ShowProgress) {
         [int]$PMetric = [math]::Round($totalBytesReceived / $contentLength * 100)
-        [ProgressUtil]::WriteProgressBar($PMetric, $true, [DownloadHelper]::DownloadOptions.progressBarLength)
+        [ProgressUtil]::WriteProgressBar($PMetric, $true, $this.DownloadOptions.ProgressBarLength)
       }
     }
     $(Get-Variable host).Value.UI.RawUI.ForegroundColor = $OgForeground
     try { Invoke-Command -ScriptBlock { $stream.Close(); $fileStream.Close() } -ErrorAction SilentlyContinue } catch { $null }
     return (Get-Item $outFile)
   }
-  static [IO.FileInfo] DownloadFileAsync([uri]$Uri, [string]$OutFile, $dlEvent, [bool]$verbose) {
+  [IO.FileInfo] DownloadFileAsync([uri]$Uri, [string]$OutFile, $dlEvent, [bool]$verbose) {
     try {
       $webClient = [System.Net.WebClient]::new()
       # $webClient.Credentials = $login
