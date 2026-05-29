@@ -96,7 +96,7 @@
     [parameter(Mandatory = $false)][string] $sensitiveStatements = ''
   )
 
-  dynamicParam {
+  dynamicparam {
     $dynamicParams = [System.Management.Automation.RuntimeDefinedParameterDictionary]::new()
     #region IgnoredArguments
     $attributeCollection = [System.Collections.ObjectModel.Collection[System.Attribute]]::new()
@@ -121,7 +121,7 @@
     return $dynamicParams
   }
 
-  Process {
+  process {
     $PsCmdlet.MyInvocation.BoundParameters.GetEnumerator() | ForEach-Object { New-Variable -Name $_.Key -Value $_.Value -ea 'SilentlyContinue' }
     [string]$statements = $statements -join ' '
     # Log Invocation  and Parameters used. $MyInvocation, $PSBoundParameters
@@ -339,65 +339,3 @@ $dbMessagePrepend [`"$exeToRun`" $wrappedStatements]. This may take a while, dep
     return $exitCode
   }
 }
-<#
-    $ShimGen = [System.IO.Path]::GetFullPath($ShimGen)
-    $process = New-Object System.Diagnostics.Process
-    $process.StartInfo = new-object System.Diagnostics.ProcessStartInfo($ShimGen, $ShimGenArgs)
-    $process.StartInfo.RedirectStandardOutput = $true
-    $process.StartInfo.RedirectStandardError = $true
-    $process.StartInfo.UseShellExecute = $false
-    $process.StartInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-
-    $process.Start() | Out-Null
-    $process.WaitForExit()
-#>
-
-<# Start PROCESS UTF8
-# $standardOut = @(Start-Utf8Process $script:OMPExecutable @("print", "tooltip", "--pwd=$cleanPWD", "--shell=powershell", "--pswd=$cleanPSWD", "--config=$env:POSH_THEME", "--command=$command", "--shell-version=$script:PSVersion"))
-    function Start-Utf8Process {
-        param(
-            [string]$FileName,
-            [string[]]$Arguments = @()
-        )
-
-        $Process = New-Object System.Diagnostics.Process
-        $StartInfo = $Process.StartInfo
-        $StartInfo.FileName = $FileName
-        if ($StartInfo.ArgumentList.Add) {
-            # ArgumentList is supported in PowerShell 6.1 and later (built on .NET Core 2.1+)
-            # ref-1: https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.processstartinfo.argumentlist?view=net-6.0
-            # ref-2: https://docs.microsoft.com/en-us/powershell/scripting/whats-new/differences-from-windows-powershell?view=powershell-7.2#net-framework-vs-net-core
-            $Arguments | ForEach-Object -Process { $StartInfo.ArgumentList.Add($_) }
-        } else {
-            # escape arguments manually in lower versions, refer to https://docs.microsoft.com/en-us/previous-versions/17w5ykft(v=vs.85)
-            $escapedArgs = $Arguments | ForEach-Object {
-                # escape N consecutive backslash(es), which are followed by a double quote, to 2N consecutive ones
-                $s = $_ -replace '(\\+)"', '$1$1"'
-                # escape N consecutive backslash(es), which are at the end of the string, to 2N consecutive ones
-                $s = $s -replace '(\\+)$', '$1$1'
-                # escape double quotes
-                $s = $s -replace '"', '\"'
-                # quote the argument
-                "`"$s`""
-            }
-            $StartInfo.Arguments = $escapedArgs -join ' '
-        }
-        $StartInfo.StandardErrorEncoding = $StartInfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
-        $StartInfo.RedirectStandardError = $StartInfo.RedirectStandardInput = $StartInfo.RedirectStandardOutput = $true
-        $StartInfo.UseShellExecute = $false
-        if ($PWD.Provider.Name -eq 'FileSystem') {
-            $StartInfo.WorkingDirectory = $PWD.ProviderPath
-        }
-        $StartInfo.CreateNoWindow = $true
-        [void]$Process.Start()
-
-        # we do this to remove a deadlock potential on Windows
-        $stdoutTask = $Process.StandardOutput.ReadToEndAsync()
-        $stderrTask = $Process.StandardError.ReadToEndAsync()
-        [void]$Process.WaitForExit()
-        $stderr = $stderrTask.Result.Trim()
-        if ($stderr -ne '') {
-          $Host.UI.WriteErrorLine($stderr)
-        }
-        $stdoutTask.Result
-#>
