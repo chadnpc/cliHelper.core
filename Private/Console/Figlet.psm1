@@ -558,17 +558,20 @@ class FigletFont {
   [int]$SmushingRules
 
   FigletFont([FigletFontName]$Name) {
-    # Walk up from the Private/ folder to the module root
-    $moduleRoot = Split-Path -Parent $PSScriptRoot
-    $path = Join-Path $moduleRoot "Private\Console\fonts\$Name.flf"
-    if (![File]::Exists($path)) {
-      # Fallback: maybe PSScriptRoot IS the module root
-      $path = Join-Path $PSScriptRoot "Private\Console\fonts\$Name.flf"
+    $fonts_in_repo = [IO.DirectoryInfo][IO.Path]::Combine((Resolve-Path .).Path, "Private", "fonts")
+    $fonts_in_module_path = [IO.DirectoryInfo][IO.Path]::Combine((Get-InstalledModule cliHelper.core).InstalledLocation, "Private", "fonts")
+    $font_path = $(if ($fonts_in_repo.Exists) {
+        [IO.Path]::Combine($fonts_in_repo.FullName, "$Name.flf")
+      } elseif ($fonts_in_module_path.Exists) {
+        [IO.Path]::Combine($fonts_in_module_path.FullName, "$Name.flf")
+      } else {
+        "$Name.flf"
+      }
+    )
+    if (![File]::Exists($font_path)) {
+      throw "Could not find $Name.flf font."
     }
-    if (![File]::Exists($path)) {
-      throw "Could not find $Name.flf font. Expected at: $path"
-    }
-    $font = [FigletFont]::Load($path)
+    $font = [FigletFont]::Load($font_path)
     $this._characters = $font._characters
     $this.Height = $font.Height
     $this.Baseline = $font.Baseline
