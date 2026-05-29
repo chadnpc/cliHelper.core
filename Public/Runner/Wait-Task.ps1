@@ -1,25 +1,32 @@
-﻿function Wait-Task {
+function Wait-Task {
   #.DESCRIPTION
-  #  Waits for a scriptblock or job to complete
+  #  Waits for a scriptblock or job to complete, displaying a live spinner.
+  #  WaitJob now returns [Results] — a structured wrapper around success/failure/output.
   #.EXAMPLE
-  #  Wait-Task "Running" { Param($ob) Start-Sleep -Seconds 3; return $ob } (Get-Process pwsh);
+  #  Wait-Task "Running" { Param($ob) Start-Sleep -Seconds 3; return $ob } (Get-Process pwsh)
+  #.EXAMPLE
+  #  # Get the full Results object for error inspection:
+  #  $res = Wait-Task "Fetching" { Invoke-RestMethod https://api.example.com } -PassThru
+  #  if ($res.HasErrors) { $res.Errors | ForEach-Object { Write-Warning $_ } }
   #.PARAMETER ProgressMsg
-  #  Message to display while waiting
+  #  Message to display while waiting (supports Spectre markup e.g. '[green]Loading[/]')
   #.PARAMETER ScriptBlock
-  #  Scriptblock to execute
+  #  Scriptblock to run as a background thread job
   #.PARAMETER Job
-  #  Job to execute
-  #.PARAMETER InputObject
-  #  Object to pass to the scriptblock
+  #  An already-started Job to wait on
+  #.PARAMETER ArgumentList
+  #  Arguments forwarded to the scriptblock
+  #.PARAMETER PassThru
+  #  Return the raw [Results] object instead of unwrapping the output payload
   #.OUTPUTS
-  #  [PsObject]
+  #  [PsObject] (or [Results] when -PassThru is used)
   [CmdletBinding(DefaultParameterSetName = 'ScriptBlock')]
   [OutputType([PsObject])][Alias('await')]
   Param (
     [Parameter(Mandatory = $false, Position = 0, ParameterSetName = 'Job')]
     [Parameter(Mandatory = $false, Position = 0, ParameterSetName = 'ScriptBlock')]
     [Alias('m')][ValidateNotNullOrEmpty()]
-    [string]$ProgressMsg = "Waiting",
+    [string]$ProgressMsg = 'Waiting',
 
     [Parameter(Mandatory = $true, Position = 1, ParameterSetName = 'ScriptBlock')]
     [Alias('s')][ValidateNotNullOrEmpty()]
@@ -30,20 +37,33 @@
     [System.Management.Automation.Job]$Job,
 
     [Parameter(Mandatory = $false, Position = 2, ParameterSetName = 'ScriptBlock')]
-    [Object[]]$ArgumentList = $null
+    [Object[]]$ArgumentList = $null,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$PassThru
   )
   begin {
-    $Result = $null
+    [Results]$results = $null
   }
   process {
+    # WaitJob returns [Results] — NOT a raw Job. Receive-Job is no longer needed.
     if ($PSCmdlet.ParameterSetName -eq 'ScriptBlock') {
-      $thrJob = [ProgressUtil]::WaitJob($ProgressMsg, $ScriptBlock, $ArgumentList);
+      $results = [ProgressUtil]::WaitJob($ProgressMsg, $ScriptBlock, $ArgumentList)
     } else {
-      $thrJob = [ProgressUtil]::WaitJob($ProgressMsg, $Job);
+      $results = [ProgressUtil]::WaitJob($ProgressMsg, $Job)
     }
-    $Result = $thrJob | Receive-Job
   }
   end {
-    return $Result
+    if ($PassThru) {
+      return $results
+    }
+    # Surface errors as non-terminating so the caller's $Error stream receives them.
+    if ($results.HasErrors) {
+      foreach ($err in $results.Errors) {
+        Write-Error $err -ErrorAction Continue
+      }
+    }
+    # Unwrap and return the output payload (replaces the old Receive-Job call).
+    return $results.Output
   }
 }
