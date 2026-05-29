@@ -4,6 +4,7 @@ using module .\Abstracts.psm1
 using module .\Console\Colors.psm1
 using module .\Console.psm1
 using module .\Console\Internal.psm1
+using module .\Result.psm1
 
 class FileTools {
   static [PSObject] GetItemSize([string]$Path) {
@@ -226,83 +227,100 @@ class ProgressUtil {
       Write-Debug '[ProgressUtil]::data.ShowProgress is set to false. Progress bar will not be displayed. Please enable it by running [ProgressUtil]::ToggleShowProgress()'
     }
   }
-  static [System.Management.Automation.Job] WaitJob([string]$progressMsg, [scriptblock]$sb) {
+  static [Results] WaitJob([string]$progressMsg, [scriptblock]$sb) {
     return [ProgressUtil]::WaitJob($progressMsg, $sb, $null)
   }
-  static [System.Management.Automation.Job] WaitJob([string]$progressMsg, [System.Management.Automation.Job]$Job) {
+  static [Results] WaitJob([string]$progressMsg, [System.Management.Automation.Job]$Job) {
     return [ProgressUtil]::WaitJob($progressMsg, $Job, [ProgressUtil]::data.ProgressMsgcolor)
   }
-  static [System.Management.Automation.Job] WaitJob([string]$progressMsg, [System.Management.Automation.Job]$Job, [string]$PmsgColor) {
+  static [Results] WaitJob([string]$progressMsg, [System.Management.Automation.Job]$Job, [string]$PmsgColor) {
     <#
     .DESCRIPTION
-      waitjob is different from writeprogressbar - it's a visual progress bar that spins while waiting for a job to complete
-      useful when we don't know the percentage of completion or it's not linear.
-      we use it to create a better visual experience when waiting for long running operations.
-    .EXAMPLE
-      [ProgressUtil]::WaitJob("waiting", { Start-Sleep -Seconds 3 });
-    .EXAMPLE
-      $j = [ProgressUtil]::WaitJob("Waiting", { Param($ob) Start-Sleep -Seconds 3; return $ob }, (Get-Process pwsh));
-      $j | Receive-Job
-
-      NPM(K)    PM(M)      WS(M)     CPU(s)      Id  SI ProcessName
-      ------    -----      -----     ------      --  --
-            0     0.00     559.55      94.22   53184 …84 pwsh
-            0     0.00     253.84       6.91   55195 …23 pwsh
-    .EXAMPLE
-      Wait-Task -ScriptBlock { Start-Sleep -Seconds 3; $input | Out-String } -InputObject (Get-Process pwsh)
-    .EXAMPLE
-      $RequestParams = @{
-        Uri    = 'https://jsonplaceholder.typicode.com/todos/1'
-        Method = 'GET'
-      }
-      $result = [ProgressUtil]::WaitJob("Making a request", { Param($rp) Start-Sleep -Seconds 2; Invoke-RestMethod @rp }, $RequestParams) | Receive-Job
-      echo $result
-
-      userId id title              completed
-      ------ -- -----              ---------
-          1  1 delectus aut autem     False
+      Visual progress bar that spins while waiting for a job to complete.
+      Uses cliHelper.core robust Progress framework preventing silent failures.
+      Types are resolved at runtime to avoid PowerShell parse-time type resolution
+      failures for transitively-imported module classes.
     #>
-    [Console]::CursorVisible = $false; [ValidateScript( { return [bool][RGB]$_ })][string]$PmsgColor = $PmsgColor
-    [ProgressUtil]::data.TwirlFrames = [ProgressUtil]::data.TwirlEmojis[8]; $PBcolor = [ProgressUtil]::data.ProgressBarcolor
-    [ValidateScript( { return [bool][RGB]$_ })][string]$PBcolor = $PBcolor
-    [int]$length = [ProgressUtil]::data.TwirlFrames.Length;
-    $originalY = [Console]::CursorTop
-    while ($Job.JobStateInfo.State -notin ('Completed', 'failed')) {
-      for ($i = 0; $i -lt $length; $i++) {
-        [ProgressUtil]::data.TwirlFrames.Foreach({
-            Write-Console "$progressMsg" -NoNewLine -f $PmsgColor
-            Write-Console " $($_[$i])" -NoNewLine -f $PBcolor
-          })
+    [System.Diagnostics.Stopwatch]$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    # --- Runtime type resolution (avoids parse-time [TypeName] failures for transitive using module deps) ---
+    $consoleType   = [type]'AnsiConsole'
+    $progressType  = [type]'Progress'
+    $settingsType  = [type]'ProgressTaskSettings'
+    $descColType   = [type]'TaskDescriptionColumn'
+    $spinColType   = [type]'SpinnerColumn'
+    $colorType     = [type]'Color'
+
+    $console  = $consoleType::Console
+    $progress = $progressType::new($console)
+    $progress.Columns.Clear()
+    $progress.Columns.Add($descColType::new($progress))
+    $progress.Columns.Add($spinColType::new($progress))
+
+    # Translate legacy RGB color name to Spectre markup color string
+    try {
+      $colorObj = $colorType::FromName($PmsgColor)
+      $PmsgColorStyle = if ($null -eq $colorObj -or $colorObj.IsDefault) { 'yellow' } else { $colorObj.ToMarkup() }
+    } catch {
+      $PmsgColorStyle = 'yellow'
+    }
+
+    # Capture outer variables for use inside the Action scriptblock
+    $capturedJob     = $Job
+    $capturedMsg     = $PmsgColorStyle
+    $capturedMsgText = $progressMsg
+    $capturedSettings = $settingsType::new()
+
+    $progress.Start([System.Action[object]] {
+      param([object]$ctx)
+      $task = $ctx.AddTask("[$capturedMsg]$capturedMsgText[/]", $capturedSettings)
+      while ($capturedJob.JobStateInfo.State -notin @('Completed', 'Failed', 'Stopped')) {
         [System.Threading.Thread]::Sleep(50)
-        Write-Console ("`b" * ($length + $progressMsg.Length)) -NoNewLine -f $PmsgColor
-        [Console]::CursorTop = $originalY
       }
+      $task.Increment(100)
+    })
+
+    $stopwatch.Stop()
+    $elapsed = $stopwatch.Elapsed.TotalSeconds
+    $res = [Results]::new()
+
+    # Collect errors from child jobs
+    [object[]]$Errors = @($Job.ChildJobs | Where-Object { $null -ne $_.Error } | ForEach-Object { $_.Error })
+
+    # Pre-declare $errVars so it's always in scope regardless of -ErrorVariable behavior
+    $errVars    = [System.Collections.ArrayList]::new()
+    $errVarsTmp = @()
+    $jobOutputs = Receive-Job -Job $Job -ErrorAction SilentlyContinue -ErrorVariable errVarsTmp
+    if ($errVarsTmp.Count -gt 0) {
+      foreach ($e in $errVarsTmp) { [void]$errVars.Add($e) }
     }
-    Write-Console "`b$progressMsg ... " -NoNewLine -f $PmsgColor
-    [System.Management.Automation.Runspaces.RemotingErrorRecord[]]$Errors = $Job.ChildJobs.Where({
-        $null -ne $_.Error
+
+    if ($Job.JobStateInfo.State -in @('Failed', 'Stopped') -or $Errors.Count -gt 0 -or $errVars.Count -gt 0) {
+      if ($Errors.Count -gt 0) {
+        $res.Add([Result]::Err($Errors[0]), $elapsed)
+      } elseif ($errVars.Count -gt 0) {
+        $res.Add([Result]::Err($errVars[0]), $elapsed)
+      } else {
+        $res.Add([Result]::Err([System.Exception]::new('Job failed without a specific error.')), $elapsed)
       }
-    ).Error;
-    if ($Job.JobStateInfo.State -eq "Failed" -or $Errors.Count -gt 0) {
-      $errormessages = [string]::Empty
-      if ($null -ne $Errors) {
-        $errormessages = $Errors.Exception.Message -join "`n"
-      }
-      Write-Console "Completed with errors.`n`t$errormessages" -f Salmon
     } else {
-      Write-Console "Done" -f Green
+      $res.Add([Result]::Ok($jobOutputs), $elapsed)
     }
-    [Console]::CursorVisible = $true;
-    return $Job
+
+    return $res
   }
-  static [System.Management.Automation.Job] WaitJob([string]$progressMsg, [scriptblock]$sb, [Object[]]$ArgumentList) {
-    $Job = ($null -ne $ArgumentList) ? (Start-ThreadJob -ScriptBlock $sb -ArgumentList $ArgumentList ) : (Start-ThreadJob -ScriptBlock $sb)
+  static [Results] WaitJob([string]$progressMsg, [scriptblock]$sb, [Object[]]$ArgumentList) {
+    if ($null -ne $ArgumentList) {
+      $Job = Start-ThreadJob -ScriptBlock $sb -ArgumentList $ArgumentList
+    } else {
+      $Job = Start-ThreadJob -ScriptBlock $sb
+    }
     return [ProgressUtil]::WaitJob($progressMsg, $Job)
   }
   static [void] ToggleShowProgress() {
     # .DESCRIPTION
     # The ShowProgress option respects $verbosepreference, this method enables you to take control of that and set/toggle it manualy.
-    [ProgressUtil]::data.Set("ShowProgress", [scriptblock]::Create(" return [bool]$([int]![ProgressUtil]::data.ShowProgress)"))
+    [ProgressUtil]::data.Set('ShowProgress', [scriptblock]::Create(" return [bool]$([int]![ProgressUtil]::data.ShowProgress)"))
   }
 }
 
