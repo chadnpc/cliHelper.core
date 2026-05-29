@@ -368,25 +368,26 @@ class ConsoleHelper {
       DemoAnsiInThreadrunner                     = "Ansi color ouptut in Threadrunner"
       DemoFailingTaskInThreadrunner              = "How threadrunner handles failing tasks"
       DemoSimultaneousBackgroundJobsWithFailures = "Simultaneous Background Jobs with Failures"
-      # DemoStatus                                 = "Status with Spinner." # failing soo bad! - will crash or freeze the whole terminal
+      # DemoStatus                                 = "Status with Spinner." # failing soo bad! - will crash or freeze the whole terminal ☠︎︎
       DemoTextPrompt                             = "Text Prompt"
       DemoConfirmPrompt                          = "Confirmation Prompt"
       DemoSelectionPrompt                        = "Selection Prompt"
       DemoMultiSelectionPrompt                   = "MultiSelection Prompt"
       DemoCliArt                                 = "CliArt"
     }
-    $errors = [System.Collections.Generic.List[ErrorRecord]]::new()
+    $failing = [OrderedDictionary[string, ErrorRecord]]::new()
     $demos.Keys.ForEach({
+        $method_name = $_
         Write-Console "[+] " -NoNewLine; Write-Console $demos[$_] -f LimeGreen
         try {
           [ConsoleHelper]::$_()
         } catch {
-          $errors.Add($_)
+          $failing.Add($method_name, $_)
         } finally {
           $Host.UI.WriteLine("`n`n")
         }
       }
     )
-    return $errors.ToArray()
+    return $failing.ToArray()
   }
 }
