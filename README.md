@@ -44,7 +44,7 @@ then run demos
 
 ```PowerShell
 Import-Module cliHelper.core
-.\scripts\run_interactive_demos.ps1
+$any_errors = .\scripts\run_interactive_demos.ps1
 ```
 
 
@@ -84,7 +84,8 @@ cd cliHelper.core
 make your changes and run the following command to test your changes:
 
 ```PowerShell
-Import-Module .\cliHelper.core.psd1 -ea Ignore -Verbose:$false -Force; $pester_test_results = .\Test-Module.ps1 -NoBuild
+Import-Module .\cliHelper.core.psd1 -ea Ignore -Verbose:$false -Force;
+$pester_test_results = .\Test-Module.ps1 -NoBuild
 ```
 
 ## license
