@@ -44,7 +44,7 @@ then run demos
 
 ```PowerShell
 Import-Module cliHelper.core
-$any_errors = .\scripts\run_interactive_demos.ps1
+$still_failing = [ConsoleHelper]::Run_Interactive_Demos()
 ```
 
 

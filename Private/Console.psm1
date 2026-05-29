@@ -47,7 +47,7 @@ class ConsoleHelper {
     $console = [AnsiConsole]::Console
     $console.Write([Text]::new('Plain text output'))
     $console.WriteLine('')
-    $console.Write([Markup]::new('[yellow]Warning:[/] disk usage high'))
+    $console.Write([Markup]::new('[yellow]Warning:[/] disk usage high [grey]just kidding :)[/]'))
     $console.WriteLine('')
   }
   static [void] DemoPanelsRulesandAlignment() {
@@ -349,5 +349,44 @@ class ConsoleHelper {
   static [void] DemoCliArt() {
     $art = Create-CliArt "https://pastebin.com/raw/p29UR385" -Taglines "Build. Ship. Repeat."; $art.Replace("x.y.z", "0.3.2");
     $art.Write(15, $false, $true)
+  }
+
+  static [ErrorRecord[]] Run_Interactive_Demos() {
+    # [ConsoleHelper].GetMethods().Where({ $_.IsStatic -and $_.Name.StartsWith("Demo") }).Name
+    $demos = @{
+      DemoMarkup                                 = "Markup rendering"
+      DemoTextandMarkup                          = "Detect text and Markup"
+      DemoPanelsRulesandAlignment                = "Panels, Rules, and Alignment."
+      DemoTables                                 = "Tables."
+      DemoRowsColumnsandGrid                     = "Rows, Columns, and Grid."
+      DemoTreeRendering                          = "Tree Rendering."
+      DemoJSONRendering                          = "JSON preview/rendering."
+      DemoChartsandCalendar                      = "Charts and Calendar."
+      DemoProgress                               = "Animated Progress."
+      DemoFigletText                             = "FigletText Placeholder."
+      DemoSearchableListPrompt                   = "Searchable Interactive ListPrompt."
+      DemoAnsiInThreadrunner                     = "Ansi color ouptut in Threadrunner"
+      DemoFailingTaskInThreadrunner              = "How threadrunner handles failing tasks"
+      DemoSimultaneousBackgroundJobsWithFailures = "Simultaneous Background Jobs with Failures"
+      # DemoStatus                                 = "Status with Spinner." # failing soo bad! - will crash or freeze the whole terminal
+      DemoTextPrompt                             = "Text Prompt"
+      DemoConfirmPrompt                          = "Confirmation Prompt"
+      DemoSelectionPrompt                        = "Selection Prompt"
+      DemoMultiSelectionPrompt                   = "MultiSelection Prompt"
+      DemoCliArt                                 = "CliArt"
+    }
+    $errors = [System.Collections.Generic.List[ErrorRecord]]::new()
+    $demos.Keys.ForEach({
+        Write-Console "[+] " -NoNewLine; Write-Console $demos[$_] -f LimeGreen
+        try {
+          [ConsoleHelper]::$_()
+        } catch {
+          $errors.Add($_)
+        } finally {
+          $Host.UI.WriteLine("`n`n")
+        }
+      }
+    )
+    return $errors.ToArray()
   }
 }
