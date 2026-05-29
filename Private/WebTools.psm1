@@ -118,7 +118,13 @@ class DownloadHelper {
       Write-Console $_.Exception.Message -f Salmon
       throw $_
     } finally {
-      $verbose ? ([ProgressUtil]::WriteProgressBar(100, $true, "  Downloaded $($dlEvent.GetSizeProgress())", $true)) : $null
+      if ($dlEvent.Data.BytesReceived -eq $dlEvent.Data.TotalBytesToReceive) {
+        [ProgressUtil]::WriteProgressBar(100, $true, "  Downloaded $($dlEvent.GetSizeProgress())", $true)
+      } else {
+        # WriteProgressBar(int percent, bool update, int PBLength, string message, bool Completed, string PBcolor)
+        [ProgressUtil]::WriteProgressBar(0, $true, "  Download Failed: $($Uri.AbsoluteUri)", $true, "Red")
+      }
+
       if ([IO.File]::Exists($OutFile)) {
         $verbose ? (Write-Console "  OutPath: '$OutFile'" -f SteelBlue) : $null
       }
