@@ -17,20 +17,66 @@ using module .\Console\Ansi.psm1
 using module .\Console\Ui.psm1
 using module .\Console\Colors.psm1
 using module .\Utilities.psm1
+using module .\Result.psm1
 
 
-class JobResult {
+# Inherits from Result so that job failures are captured as Err() values
+# instead of crashing the progress-bar loop with bare throws.
+class JobResult : Result {
+  # ── Job metadata (mutable by the runner loop only) ──────────────────────
   [string]$Name
-  [bool]$Success
-  [PSDataCollection[psobject]]$Output
-  hidden [int]$Index # from BackgroundJob 's index
-  hidden [object]$Error
-  hidden [string]$Status
+  hidden [int]$Index       # ordinal position in the job list
+  hidden [string]$Status   # "Pending" | "Starting" | "Running" | "Completed" | "Failed"
   hidden [int]$DurationMs
   hidden [System.Diagnostics.Stopwatch]$Stopwatch
 
+  # ── Convenience read-through properties ─────────────────────────────────
+  # These let existing call-sites use the old names without change.
+  [bool]   get_Success() { return $this.IsOk() }
+  [object] get_Output()  { return $this.UnwrapOrDefault() }
+  [object] get_Error()   { return if ($this.IsErr()) { $this.UnwrapErr() } else { $null } }
+
+  # Private constructor — use the static factories below.
+  hidden JobResult([ResultKind]$kind, [object]$value, [object]$err) : base($kind, $value, $err) {}
+
+  # ── Static factories ─────────────────────────────────────────────────────
+  # Pending placeholder — no result yet.
+  static [JobResult] Pending([int]$index, [string]$name) {
+    $jr = [JobResult]::new([ResultKind]::Ok, $null, $null)
+    $jr.Index  = $index
+    $jr.Name   = $name
+    $jr.Status = 'Pending'
+    return $jr
+  }
+
+  # Successful completion carrying an output value.
+  static [JobResult] FromOk([int]$index, [string]$name, [object]$output, [int]$durationMs, [System.Diagnostics.Stopwatch]$sw) {
+    $jr = [JobResult]::new([ResultKind]::Ok, $output, $null)
+    $jr.Index       = $index
+    $jr.Name        = $name
+    $jr.Status      = 'Completed'
+    $jr.DurationMs  = $durationMs
+    $jr.Stopwatch   = $sw
+    return $jr
+  }
+
+  # Failed completion carrying an error descriptor.
+  static [JobResult] FromErr([int]$index, [string]$name, [object]$error, [int]$durationMs, [System.Diagnostics.Stopwatch]$sw) {
+    # Guard: Err() in the base class rejects $null — supply a fallback string.
+    $safeErr = if ($null -ne $error) { $error } else { 'Unknown error' }
+    $jr = [JobResult]::new([ResultKind]::Err, $null, $safeErr)
+    $jr.Index       = $index
+    $jr.Name        = $name
+    $jr.Status      = 'Failed'
+    $jr.DurationMs  = $durationMs
+    $jr.Stopwatch   = $sw
+    return $jr
+  }
+
+  # ── Retained utility ────────────────────────────────────────────────────
+  # Strip ANSI markup from display strings so summary output is clean.
   [void] RemoveMarkup() {
-    $this.Name = [AnsiMarkup]::Remove($this.Name)
+    $this.Name   = [AnsiMarkup]::Remove($this.Name)
     $this.Status = [AnsiMarkup]::Remove($this.Status)
   }
 }
@@ -74,11 +120,12 @@ class BackgroundJob {
     $this.Arguments = $Argumentlist
   }
   BackgroundJob([int]$Index, [string]$Name, [ScriptBlock]$command, [object[]]$Argumentlist) {
-    $this.Index = $Index
-    $this.Name = if ($Name) { $Name } else { "Job $($Index.ToString("D2"))" }
+    $this.Index       = $Index
+    $this.Name        = if ($Name) { $Name } else { "Job $($Index.ToString('D2'))" }
     $this.ScriptBlock = $command
-    $this.Arguments = $Argumentlist
-    $this.Result = [JobResult]@{ Index = $Index; Name = $Name }
+    $this.Arguments   = $Argumentlist
+    # Use the Pending factory — no result yet, but metadata is set.
+    $this.Result = [JobResult]::Pending($Index, $this.Name)
   }
 }
 
@@ -715,26 +762,36 @@ class ThreadRunner {
           try {
             $output = $job.PowerShellInstance.EndInvoke($job.AsyncHandle)
             if ($job.PowerShellInstance.HadErrors) {
-              $job.Status = "Failed"
-              $job.Result.Success = $false
-              $errors = $job.PowerShellInstance.Streams.Error
-              $job.Result.Error = $errors[0].Exception.Message # show the last error message
+              # ── Err path: capture error safely via JobResult.FromErr ──────
+              $job.Status  = 'Failed'
+              $errors      = $job.PowerShellInstance.Streams.Error
+              $firstErrMsg = $errors[0].Exception.Message
               $MoreAbouttheError = $errors[0] | Format-List * -Force | Out-String
-              $ErrorRecords = [PSDataCollection[ErrorRecord]]::new(); $errors.ForEach({ $ErrorRecords.Add($_) })
-              $opts.LogErrors($ErrorRecords, [ThreadRunner]::GetErrorMetadata($ErrorRecords, $MoreAbouttheError), $job.ThrowOnFail)
+              $ErrorRecords = [PSDataCollection[ErrorRecord]]::new()
+              $errors.ForEach({ $ErrorRecords.Add($_) })
+              $opts.LogErrors($ErrorRecords, [ThreadRunner]::GetErrorMetadata($ErrorRecords, $MoreAbouttheError), $job.throwOnFail)
+              $job.Result = [JobResult]::FromErr(
+                $job.Index, $job.Name, $firstErrMsg,
+                $job.Stopwatch.ElapsedMilliseconds, $job.Stopwatch
+              )
             } else {
+              # ── Ok path: wrap output safely via JobResult.FromOk ─────────
               $job.Progress = 100
-              $job.Status = "Completed"
-              $job.Result.Success = $true
-              $job.Result.Output = if ($output.Count -eq 1) { $output[0] } else { $output }
+              $job.Status   = 'Completed'
+              $resolvedOutput = if ($output.Count -eq 1) { $output[0] } else { $output }
+              $job.Result = [JobResult]::FromOk(
+                $job.Index, $job.Name, $resolvedOutput,
+                $job.Stopwatch.ElapsedMilliseconds, $job.Stopwatch
+              )
             }
           } catch {
-            $job.Status = "Failed"
-            $job.Result.Success = $false
-            $job.Result.Error = $_.Exception.Message
+            # ── Safety net: unexpected exception in EndInvoke itself ───────
+            $job.Status = 'Failed'
+            $job.Result = [JobResult]::FromErr(
+              $job.Index, $job.Name, $_.Exception.Message,
+              $job.Stopwatch.ElapsedMilliseconds, $job.Stopwatch
+            )
           }
-          $job.Result.DurationMs = $job.Stopwatch.ElapsedMilliseconds
-          $job.Result.Stopwatch = $job.Stopwatch
 
           $job.PowerShellInstance.Dispose()
           $runningJobs.RemoveAt($i)
