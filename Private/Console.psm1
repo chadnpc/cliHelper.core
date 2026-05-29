@@ -110,8 +110,8 @@ class ConsoleHelper {
       Uri    = $uri.AbsoluteUri
       Method = 'GET'
     }
-    $result = $progressHelper::WaitJob("Making GET request to $($uri.Host)", { param($rp) Invoke-RestMethod @rp }, $RequestParams) | Receive-Job
-    $json = $result | ConvertTo-Json
+    $result = $progressHelper::WaitJob("Making GET request to $($uri.Host)", { param($rp) Invoke-RestMethod @rp }, $RequestParams)
+    $json = $result.Output | ConvertTo-Json
     $tokens = [JsonTokenizer]::Tokenize($json)
     $syntax = [JsonParser]::Parse($tokens)
     [AnsiConsole]::Console.Write([JsonText]::new($syntax))
