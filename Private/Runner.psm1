@@ -214,20 +214,6 @@ class ProgressTheme {
   [string]$BarEmpty
   [string]$BarStart
   [string]$BarEnd
-  static hidden [PsRecord] $config = @{
-    DefaultProgressMsg = "Running background task"
-    ProgressBarColor   = "LightSeaGreen"
-    ProgressMsgColor   = "LightGoldenrodYellow"
-    TwirlEmojis        = [PsRecord]@{
-      modern  = "◰◳◲◱"
-      scifi   = "◇◈◆"
-      lunar   = "◐◓◑◒"
-      otto    = "←↖↑↗→↘↓↙"
-      glyph   = "⣾⣽⣻⢿⡿⣟⣯⣷" # black and white
-      classic = "|/-\\"
-      vintage = "-\\|/"
-    }
-  }
 
   static [ProgressTheme] $Modern = [ProgressTheme]::GetModern()
   static [ProgressTheme] $Scifi = [ProgressTheme]::GetScifi()
@@ -247,7 +233,7 @@ class ProgressTheme {
     $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
     $t.HeaderColor = "Aqua"; $t.BorderColor = "Grey"
     $t.BarFilled = "█"; $t.BarEmpty = "░"; $t.BarStart = ""; $t.BarEnd = ""
-    $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.modern
+    $t.TwirlFrames = "◰◳◲◱"
     return $t
   }
   static hidden [ProgressTheme] GetScifi() {
@@ -256,7 +242,7 @@ class ProgressTheme {
     $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
     $t.HeaderColor = "Aqua"; $t.BorderColor = "Grey"
     $t.BarFilled = "▰"; $t.BarEmpty = "▱"; $t.BarStart = ""; $t.BarEnd = ""
-    $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.scifi
+    $t.TwirlFrames = "◇◈◆"
     return $t
   }
   static hidden [ProgressTheme] GetLunar() {
@@ -265,7 +251,7 @@ class ProgressTheme {
     $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
     $t.HeaderColor = "Aqua"; $t.BorderColor = "Grey"
     $t.BarFilled = "▩"; $t.BarEmpty = "▢"; $t.BarStart = ""; $t.BarEnd = ""
-    $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.lunar
+    $t.TwirlFrames = "◐◓◑◒"
     return $t
   }
   static hidden [ProgressTheme] GetOtto() {
@@ -274,7 +260,7 @@ class ProgressTheme {
     $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
     $t.HeaderColor = "Aqua"; $t.BorderColor = "Grey"
     $t.BarFilled = "¦"; $t.BarEmpty = " "; $t.BarStart = ""; $t.BarEnd = ""
-    $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.otto
+    $t.TwirlFrames = "←↖↑↗→↘↓↙"
     return $t
   }
   static hidden [ProgressTheme] GetGlyph() {
@@ -283,7 +269,7 @@ class ProgressTheme {
     $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
     $t.HeaderColor = "Aqua"; $t.BorderColor = "Grey"
     $t.BarFilled = "⣿"; $t.BarEmpty = " "; $t.BarStart = ""; $t.BarEnd = ""
-    $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.glyph
+    $t.TwirlFrames = "⣾⣽⣻⢿⡿⣟⣯⣷" # black and white
     return $t
   }
   static hidden [ProgressTheme] GetClassic() {
@@ -292,7 +278,7 @@ class ProgressTheme {
     $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
     $t.HeaderColor = "Yellow"; $t.BorderColor = "Teal"
     $t.BarFilled = "■"; $t.BarEmpty = " "; $t.BarStart = "["; $t.BarEnd = "]"
-    $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.classic
+    $t.TwirlFrames = "|/-\\"
     return $t
   }
   static hidden [ProgressTheme] GetVintage() {
@@ -301,7 +287,7 @@ class ProgressTheme {
     $t.FailedColor = "Red"; $t.PendingColor = "Grey"; $t.TextColor = "White"
     $t.HeaderColor = "Aqua"; $t.BorderColor = "Grey"
     $t.BarFilled = "❚"; $t.BarEmpty = " "; $t.BarStart = ""; $t.BarEnd = ""
-    $t.TwirlFrames = [ProgressTheme]::config.TwirlEmojis.vintage
+    $t.TwirlFrames = "-\\|/"
     return $t
   }
 }
@@ -648,7 +634,7 @@ class ThreadRunner {
     # .EXAMPLE
     # $result = [ThreadRunner]::Run("Making guid & some background stuff", { param([string]$str) Start-Sleep 3; return ($str | xconvert ToGuid) }, "some text")
     return [ThreadRunner]::Run($ActivityTitle, @{
-        n = [string]::IsNullOrWhiteSpace($MoreInfo) ? ([ProgressTheme]::config.DefaultProgressMsg) : $MoreInfo
+        n = [string]::IsNullOrWhiteSpace($MoreInfo) ? ("Running background task") : $MoreInfo
         s = $command
         a = $argumentlist ? $argumentlist : @()
         t = $throwOnFail
