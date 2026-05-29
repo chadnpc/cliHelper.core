@@ -25,9 +25,9 @@ using module .\Result.psm1
 class JobResult : Result {
   # ── Job metadata (mutable by the runner loop only) ──────────────────────
   [string]$Name
+  [string]$Status           # "Pending" | "Starting" | "Running" | "Completed" | "Failed"
+  [int]$DurationMs
   hidden [int]$Index       # ordinal position in the job list
-  hidden [string]$Status   # "Pending" | "Starting" | "Running" | "Completed" | "Failed"
-  hidden [int]$DurationMs
   hidden [System.Diagnostics.Stopwatch]$Stopwatch
 
   # ── Convenience read-through properties ─────────────────────────────────
@@ -443,26 +443,7 @@ class JobRunnerOptions {
     )
     # Re-throw immediately if requested; otherwise buffer silently.
     if ($throw) { throw $ErrorRecords }
-    # ← no Write-Console here; let FlushErrorSummary handle it after the bars.
-  }
-
-  # Call this ONCE, after the progress bars are done and the cursor has been
-  # repositioned below them. Prints any buffered errors cleanly to the console.
-  [void] FlushErrorSummary() {
-    if (!$this.ErrorLog -or $this.ErrorLog.Count -eq 0) { return }
-    [AnsiConsole]::WriteLine('')
-    foreach ($record in $this.ErrorLog) {
-      if ($record.Metadata -and $record.Metadata.IsPrinted) { continue }
-      # Build a compact one-liner per failed job
-      $msg = $record.Exception.Message
-      $pos = if ($record.InvocationInfo -and $record.InvocationInfo.PositionMessage) {
-        # trim the multi-line position blob to the first two lines
-        ($record.InvocationInfo.PositionMessage -split "`n" | Select-Object -First 2) -join ' '
-      } else { '' }
-      $line = if ($pos) { "$msg  ($pos)" } else { $msg }
-      $line | Write-Console -f LightCoral
-      if ($record.Metadata) { $record.Metadata.IsPrinted = $true }
-    }
+    # ← no Write-Console here; errors are safely stored in ErrorLog and accessible via JobResult.
   }
 }
 
@@ -690,10 +671,10 @@ class ThreadRunner {
           try {
             $output = $job.PowerShellInstance.EndInvoke($job.AsyncHandle)
             if ($job.PowerShellInstance.HadErrors) {
-              # ── Err path: buffer silently; FlushErrorSummary prints after bars ──
-              $job.Status   = 'Failed'
-              $errors       = $job.PowerShellInstance.Streams.Error
-              $firstErrMsg  = $errors[0].Exception.Message
+              # ── Err path: buffer silently in ErrorLog ──
+              $job.Status = 'Failed'
+              $errors = $job.PowerShellInstance.Streams.Error
+              $firstErrMsg = $errors[0].Exception.Message
               # Use PositionMessage directly — no Format-List pipeline that could
               # bleed output into the cursor-positioned progress bar region.
               $posInfo = ($errors[0].InvocationInfo.PositionMessage + ' ').TrimEnd()
@@ -746,9 +727,6 @@ class ThreadRunner {
     if ($endY -lt 0) { $endY = 0 }
     if ($endY -ge [Console]::BufferHeight) { $endY = [Console]::BufferHeight - 1 }
     try { [Console]::SetCursorPosition(0, $endY); [Console]::CursorVisible = $originalCursorVisible } catch {}
-
-    # Cursor is now safely below the progress bars — flush any buffered errors.
-    $opts.FlushErrorSummary()
 
     return $results.ToArray()
   }
