@@ -7,7 +7,7 @@ using module .\Console\Internal.psm1
 using module .\Utilities.psm1
 
 # downloadhelper
-class dlh {
+class DownloadHelper {
   [string]$Id
   static [PsRecord] $DownloadOptions = @{
     ShowProgress      = $true
@@ -18,7 +18,7 @@ class dlh {
     Proxy             = $null
     Force             = $false
   }
-  dlh() {
+  DownloadHelper() {
     $this.Id = [Guid]::NewGuid().Guid.replace('-', '').SubString(0, 20)
     $this.PsObject.Properties.Add([PSScriptProperty]::new('Data', [scriptblock]::Create("`$e = Get-Event -SourceIdentifier $($this.Id) -ea Ignore; if (`$e) { return `$e[-1].SourceEventArgs }; return `$null")))
   }
@@ -43,11 +43,11 @@ class dlh {
 
   static [IO.FileInfo] DownloadFile([uri]$url) {
     $randomSuffix = [Guid]::NewGuid().Guid.subString(15).replace('-', [string]::Join('', (0..9 | Get-Random -Count 1)))
-    return [dlh]::DownloadFile($url, "$(Split-Path $url.AbsolutePath -Leaf)_$randomSuffix")
+    return [DownloadHelper]::DownloadFile($url, "$(Split-Path $url.AbsolutePath -Leaf)_$randomSuffix")
   }
 
   static [IO.FileInfo] DownloadFile([uri]$url, [string]$outFile) {
-    return [dlh]::DownloadFile($url, $outFile, $false)
+    return [DownloadHelper]::DownloadFile($url, $outFile, $false)
   }
 
   static [IO.FileInfo] DownloadFile([uri]$url, [string]$outFile, [bool]$Force) {
@@ -76,7 +76,7 @@ class dlh {
     $totalBytesReceived = 0
     $totalBytesToReceive = $contentLength
     $OgForeground = (Get-Variable host).Value.UI.RawUI.ForegroundColor
-    $Progress_Msg = [dlh]::DownloadOptions.ProgressMessage
+    $Progress_Msg = [DownloadHelper]::DownloadOptions.ProgressMessage
     if ([string]::IsNullOrWhiteSpace($Progress_Msg)) { $Progress_Msg = "[+] Downloading $name to $outFile" }
     Write-Host $Progress_Msg -ForegroundColor Magenta
     $(Get-Variable host).Value.UI.RawUI.ForegroundColor = [ConsoleColor]::Green
@@ -85,9 +85,9 @@ class dlh {
       $totalBytesReceived += $bytesRead
       $totalBytesToReceive -= $bytesRead
       $fileStream.Write($buffer, 0, $bytesRead)
-      if ([dlh]::DownloadOptions.ShowProgress) {
+      if ([DownloadHelper]::DownloadOptions.ShowProgress) {
         [int]$PMetric = [math]::Round($totalBytesReceived / $contentLength * 100)
-        [ProgressUtil]::WriteProgressBar($PMetric, $true, [dlh]::DownloadOptions.progressBarLength)
+        [ProgressUtil]::WriteProgressBar($PMetric, $true, [DownloadHelper]::DownloadOptions.progressBarLength)
       }
     }
     $(Get-Variable host).Value.UI.RawUI.ForegroundColor = $OgForeground

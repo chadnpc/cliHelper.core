@@ -100,8 +100,8 @@
     try {
       $use_verbose = $VerbosePreference -eq 'Continue' -or $verbose.IsPresent
       $SplatParams = @{
-        ScriptBlock            = { param([uri]$Uri, [string]$OutFile, $dlEvent, [bool]$verbose) return [IO.FileInfo][dlh]::DownloadFileAsync($Uri, $OutFile, $dlEvent, $verbose) }
-        ArgumentList           = @([uri]$Uri, [string]$OutputFilePath, [dlh]::New(), [bool]$use_verbose)
+        ScriptBlock            = { param([uri]$Uri, [string]$OutFile, $dlEvent, [bool]$verbose) return [IO.FileInfo][DownloadHelper]::DownloadFileAsync($Uri, $OutFile, $dlEvent, $verbose) }
+        ArgumentList           = @([uri]$Uri, [string]$OutputFilePath, [DownloadHelper]::New(), [bool]$use_verbose)
         MaxAttempts            = $Retries
         SecondsBetweenAttempts = $SecondsBetweenAttempts
         Message                = $Message
