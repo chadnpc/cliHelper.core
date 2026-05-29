@@ -41,7 +41,7 @@ class cliart {
   static hidden [cliart] _init_([string]$s, [string[]]$taglines, $o) {
     $from_url = $false; $use_verbose = (Get-Variable VerbosePreference -Scope global -ValueOnly) -eq 'Continue'
     $i = switch ($true) {
-      ([cryptobase]::IsValidUrl($s)) { $from_url = $true; $dlfile = $(Start-DownloadWithRetry -Uri $s -Message "downloading" -Verbose:$use_verbose -caller '[cliart]'); Get-Item $dlfile; break }
+      ([cryptobase]::IsValidUrl($s)) { $from_url = $true; $dlfile = $(Start-DownloadWithRetry -Uri $s -Message "downloading" -DownloadPath ([IO.Path]::GetTempPath()) -Verbose:$use_verbose -caller '[cliart]'); Get-Item $dlfile; break }
       ([cryptobase]::IsBase64String($s)) { [System.Convert]::FromBase64String($s); break }
       ([cliart]::ResolveRelativeFilePath([ref]$s)) { (Get-Item $s); break }
       default {
