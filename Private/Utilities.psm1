@@ -168,15 +168,17 @@ class ProgressUtil {
     # Static constructor: build $data explicitly to avoid PsRecord's broken implicit
     # hashtable-cast (which fails on non-hashtable values like string arrays & scriptblocks).
     $d = [PsRecord]::new()
-    $d.Add('ShowProgress',     [scriptblock]{ return (Get-Variable 'VerbosePreference' -ValueOnly) -eq 'Continue' })
+    $d.Add('ShowProgress', [scriptblock] { return (Get-Variable 'VerbosePreference' -ValueOnly) -eq 'Continue' })
+    $d.Add('DefaultProgressMsg', 'Running background task')
     $d.Add('ProgressBarColor', 'LightSeaGreen')
     $d.Add('ProgressMsgColor', 'LightGoldenrodYellow')
-    $d.Add('ProgressBlock',    '■')
-    $d.Add('TwirlFrames',      '')
-    $d.Add('TwirlEmojis',      [string[]]@(
-      '◰◳◲◱', '◇◈◆', '◐◓◑◒', '←↖↑↗→↘↓↙',
-      '┤┘┴└├┌┬┐', '⣾⣽⣻⢿⡿⣟⣯⣷', '|/-\', '-\|/', '|/-\'
-    ))
+    $d.Add('ProgressBlock', '■')
+    $d.Add('TwirlFrames', '')
+    $d.Add('TwirlEmojis', [string[]]@(
+        '◰◳◲◱', '◇◈◆', '◐◓◑◒', '←↖↑↗→↘↓↙',
+        '┤┘┴└├┌┬┐', '⣾⣽⣻⢿⡿⣟⣯⣷', '|/-\', '-\|/', '|/-\'
+      )
+    )
     [ProgressUtil]::data = $d
   }
   static [void] WriteProgressBar([int]$percent) {
@@ -270,9 +272,9 @@ class ProgressUtil {
     # each loop iteration so it fires TriggerUpdate() → OnUpdate → liveSession.Tick()
     # → SpinnerColumn advances a frame → console render. Without this, the main thread
     # just sleeps and the spinner never draws.
-    $capturedJob      = $Job
-    $capturedMsg      = $PmsgColorStyle
-    $capturedMsgText  = $progressMsg
+    $capturedJob = $Job
+    $capturedMsg = $PmsgColorStyle
+    $capturedMsgText = $progressMsg
     $capturedSettings = $settingsType::new()
     $capturedSettings.IsIndeterminate = $true   # keep task alive during SetValue(0) loop
 
