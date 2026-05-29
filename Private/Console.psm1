@@ -351,7 +351,7 @@ class ConsoleHelper {
     $art.Write(15, $false, $true)
   }
 
-  static [ErrorRecord[]] Run_Interactive_Demos() {
+  static [OrderedDictionary[string, ErrorRecord]] Run_Interactive_Demos() {
     # [ConsoleHelper].GetMethods().Where({ $_.IsStatic -and $_.Name.StartsWith("Demo") }).Name
     $demos = @{
       DemoMarkup                                 = "Markup rendering"
@@ -388,6 +388,6 @@ class ConsoleHelper {
         }
       }
     )
-    return $failing.ToArray()
+    return $failing
   }
 }
