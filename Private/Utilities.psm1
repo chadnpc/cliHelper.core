@@ -244,14 +244,14 @@ class ProgressUtil {
     [System.Diagnostics.Stopwatch]$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
     # --- Runtime type resolution (avoids parse-time [TypeName] failures for transitive using module deps) ---
-    $consoleType   = [type]'AnsiConsole'
-    $progressType  = [type]'Progress'
-    $settingsType  = [type]'ProgressTaskSettings'
-    $descColType   = [type]'TaskDescriptionColumn'
-    $spinColType   = [type]'SpinnerColumn'
-    $colorType     = [type]'Color'
+    $consoleType = [type]'AnsiConsole'
+    $progressType = [type]'Progress'
+    $settingsType = [type]'ProgressTaskSettings'
+    $descColType = [type]'TaskDescriptionColumn'
+    $spinColType = [type]'SpinnerColumn'
+    $colorType = [type]'Color'
 
-    $console  = $consoleType::Console
+    $console = $consoleType::Console
     $progress = $progressType::new($console)
     $progress.Columns.Clear()
     $progress.Columns.Add($descColType::new($progress))
@@ -266,19 +266,20 @@ class ProgressUtil {
     }
 
     # Capture outer variables for use inside the Action scriptblock
-    $capturedJob     = $Job
-    $capturedMsg     = $PmsgColorStyle
+    $capturedJob = $Job
+    $capturedMsg = $PmsgColorStyle
     $capturedMsgText = $progressMsg
     $capturedSettings = $settingsType::new()
 
     $progress.Start([System.Action[object]] {
-      param([object]$ctx)
-      $task = $ctx.AddTask("[$capturedMsg]$capturedMsgText[/]", $capturedSettings)
-      while ($capturedJob.JobStateInfo.State -notin @('Completed', 'Failed', 'Stopped')) {
-        [System.Threading.Thread]::Sleep(50)
+        param([object]$ctx)
+        $task = $ctx.AddTask("[$capturedMsg]$capturedMsgText[/]", $capturedSettings)
+        while ($capturedJob.JobStateInfo.State -notin @('Completed', 'Failed', 'Stopped')) {
+          [System.Threading.Thread]::Sleep(50)
+        }
+        $task.Increment(100)
       }
-      $task.Increment(100)
-    })
+    )
 
     $stopwatch.Stop()
     $elapsed = $stopwatch.Elapsed.TotalSeconds
@@ -288,7 +289,7 @@ class ProgressUtil {
     [object[]]$Errors = @($Job.ChildJobs | Where-Object { $null -ne $_.Error } | ForEach-Object { $_.Error })
 
     # Pre-declare $errVars so it's always in scope regardless of -ErrorVariable behavior
-    $errVars    = [System.Collections.ArrayList]::new()
+    $errVars = [System.Collections.ArrayList]::new()
     $errVarsTmp = @()
     $jobOutputs = Receive-Job -Job $Job -ErrorAction SilentlyContinue -ErrorVariable errVarsTmp
     if ($errVarsTmp.Count -gt 0) {
