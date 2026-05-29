@@ -162,23 +162,22 @@ class ModuleTools {
 
 
 class ProgressUtil {
-  static [PsRecord] $data = @{ # instead of PsRecord type, this could be progressconfig property (since it comes with all these key by default)
-    ShowProgress     = { return (Get-Variable 'VerbosePreference' -ValueOnly) -eq 'Continue' }
-    ProgressBarColor = "LightSeaGreen"
-    ProgressMsgColor = "LightGoldenrodYellow"
-    ProgressBlock    = '■'
-    TwirlFrames      = ''
-    TwirlEmojis      = [string[]]@(
-      "◰◳◲◱",
-      "◇◈◆",
-      "◐◓◑◒",
-      "←↖↑↗→↘↓↙",
-      "┤┘┴└├┌┬┐",
-      "⣾⣽⣻⢿⡿⣟⣯⣷",
-      "|/-\\",
-      "-\\|/",
-      "|/-\\"
-    )
+  static [PsRecord] $data
+
+  static ProgressUtil() {
+    # Static constructor: build $data explicitly to avoid PsRecord's broken implicit
+    # hashtable-cast (which fails on non-hashtable values like string arrays & scriptblocks).
+    $d = [PsRecord]::new()
+    $d.Add('ShowProgress',     [scriptblock]{ return (Get-Variable 'VerbosePreference' -ValueOnly) -eq 'Continue' })
+    $d.Add('ProgressBarColor', 'LightSeaGreen')
+    $d.Add('ProgressMsgColor', 'LightGoldenrodYellow')
+    $d.Add('ProgressBlock',    '■')
+    $d.Add('TwirlFrames',      '')
+    $d.Add('TwirlEmojis',      [string[]]@(
+      '◰◳◲◱', '◇◈◆', '◐◓◑◒', '←↖↑↗→↘↓↙',
+      '┤┘┴└├┌┬┐', '⣾⣽⣻⢿⡿⣟⣯⣷', '|/-\', '-\|/', '|/-\'
+    ))
+    [ProgressUtil]::data = $d
   }
   static [void] WriteProgressBar([int]$percent) {
     [ProgressUtil]::WriteProgressBar($percent, $true, "")
@@ -265,19 +264,27 @@ class ProgressUtil {
       $PmsgColorStyle = 'yellow'
     }
 
-    # Capture outer variables for use inside the Action scriptblock
-    $capturedJob = $Job
-    $capturedMsg = $PmsgColorStyle
-    $capturedMsgText = $progressMsg
+    # Capture outer variables for use inside the Action scriptblock.
+    # NOTE: Progress.Start() is synchronous — the action runs on the MAIN thread.
+    # To animate the spinner we must call a task-state method (SetValue/SetDescription)
+    # each loop iteration so it fires TriggerUpdate() → OnUpdate → liveSession.Tick()
+    # → SpinnerColumn advances a frame → console render. Without this, the main thread
+    # just sleeps and the spinner never draws.
+    $capturedJob      = $Job
+    $capturedMsg      = $PmsgColorStyle
+    $capturedMsgText  = $progressMsg
     $capturedSettings = $settingsType::new()
+    $capturedSettings.IsIndeterminate = $true   # keep task alive during SetValue(0) loop
 
     $progress.Start([System.Action[object]] {
         param([object]$ctx)
         $task = $ctx.AddTask("[$capturedMsg]$capturedMsgText[/]", $capturedSettings)
         while ($capturedJob.JobStateInfo.State -notin @('Completed', 'Failed', 'Stopped')) {
-          [System.Threading.Thread]::Sleep(50)
+          [System.Threading.Thread]::Sleep(80)
+          # Fire OnUpdate → Tick() → spinner frame advance + console render
+          $task.SetValue(0)
         }
-        $task.Increment(100)
+        $task.Complete()   # sets IsCompleted=$true, shows ✓ in SpinnerColumn
       }
     )
 
