@@ -46,7 +46,6 @@ function Wait-Task {
     [Results]$results = $null
   }
   process {
-    # WaitJob returns [Results] — NOT a raw Job. Receive-Job is no longer needed.
     if ($PSCmdlet.ParameterSetName -eq 'ScriptBlock') {
       $results = [ProgressUtil]::WaitJob($ProgressMsg, $ScriptBlock, $ArgumentList)
     } else {
@@ -57,13 +56,11 @@ function Wait-Task {
     if ($PassThru) {
       return $results
     }
-    # Surface errors as non-terminating so the caller's $Error stream receives them.
     if ($results.HasErrors) {
       foreach ($err in $results.Errors) {
         Write-Error $err -ErrorAction Continue
       }
     }
-    # Unwrap and return the output payload (replaces the old Receive-Job call).
     return $results.Output
   }
 }
