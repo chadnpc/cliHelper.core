@@ -788,8 +788,9 @@ class FigletText : IRenderable {
             $result.Add($line)
             break
           }
-        } default {
-          throw [NotSupportedException]::new("Invalid alignment mode: $alignment")
+          default {
+            throw [NotSupportedException]::new("Invalid alignment mode: $alignment")
+          }
         }
 
         $result.Add([Segment]::LineBreak)
