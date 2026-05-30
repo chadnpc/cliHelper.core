@@ -16,6 +16,6 @@ function Write-Panel {
     if ($Center) {
       $renderable = [Align]::Center($panel)
     }
-    [AnsiConsole]::Console.Write($renderable)
+    return [AnsiConsole]::Console.Write($renderable)
   }
 }
