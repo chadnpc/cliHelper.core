@@ -710,6 +710,9 @@ class FigletText : IRenderable {
   [FigletLayoutMode]$LayoutMode = [FigletLayoutMode]::FullSize
 
   FigletText([string]$text) {
+    if ([string]::IsNullOrWhiteSpace($text)) {
+      Write-Verbose "Warning! The figlet text is empty"
+    }
     $this._font = [FigletFont]::Default()
     $this._text = if ($null -ne $text) { $text } else { '' }
   }
