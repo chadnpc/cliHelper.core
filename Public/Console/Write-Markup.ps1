@@ -8,9 +8,9 @@ function Write-Markup {
   process {
     $markup = [Markup]::new($MarkupText)
     if ($NoNewLine) {
-      [AnsiConsole]::Console.Write($markup)
+      return [AnsiConsole]::Console.Write($markup)
     } else {
-      [AnsiConsole]::Console.WriteLine($markup)
+      return [AnsiConsole]::Console.WriteLine($markup)
     }
   }
 }
