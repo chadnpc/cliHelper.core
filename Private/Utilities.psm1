@@ -202,31 +202,66 @@ class ProgressUtil {
   static [void] WriteProgressBar([int]$percent, [bool]$update, [int]$PBLength, [string]$message, [bool]$Completed, [string]$PBcolor) {
     <#
     .SYNOPSIS
-      A simple progress utility class
+      Renders a progress bar using the Spectre.Console Progress engine (markup + ANSI colors).
+      Colors are resolved via [Color]::FromName() → markup string so no [RGB] cast is required.
     .EXAMPLE
-      for ($i = 0; $i -le 100; $i++) { [ProgressUtil]::WriteProgressBar($i, "doing stuff") }
+      for ($i = 0; $i -le 100; $i++) { [ProgressUtil]::WriteProgressBar($i, $true, 40, "doing stuff") }
     #>
-    if ([ProgressUtil]::data.ShowProgress) {
-      [ValidateNotNull()][int]$PBLength = $PBLength; [ValidateNotNull()][int]$percent = $percent; $PmsgColor = [ProgressUtil]::data.ProgressMsgcolor
-      [ValidateNotNull()][bool]$update = $update; [ValidateNotNull()][string]$message = $message;
-      [ValidateScript( { return [bool][RGB]$_ })][string]$PmsgColor = $PmsgColor;
-      [ValidateScript( { return [bool][RGB]$_ })][string]$PBcolor = $PBcolor;
-      if ($update) { (Get-Host).UI.Write(("`b" * [ConsoleWriter]::get_ConsoleWidth())) }
-      Write-Console $message -f $PmsgColor -NoNewLine
-      Write-Console " [" -f $PBcolor -NoNewLine
-      $p = [int](($percent / 100.0) * $PBLength + 0.5)
-      for ($i = 0; $i -lt $PBLength; $i++) {
-        if ($i -ge $p) {
-          Write-Console ' ' -NoNewLine
-        } else {
-          Write-Console ([ProgressUtil]::data.ProgressBlock) -f $PBcolor -NoNewLine
+    if (![ProgressUtil]::data.ShowProgress) {
+      Write-Debug '[ProgressUtil]::data.ShowProgress is set to false. Progress bar will not be displayed. Please enable it by running [ProgressUtil]::ToggleShowProgress()'
+      return
+    }
+
+    # --- Runtime type resolution (avoids parse-time forward-reference failures) ---
+    $consoleType       = [type]'AnsiConsole'
+    $progressType      = [type]'Progress'
+    $settingsType      = [type]'ProgressTaskSettings'
+    $descColType       = [type]'TaskDescriptionColumn'
+    $progressBarColType = [type]'ProgressBarColumn'
+    $pctColType        = [type]'PercentageColumn'
+    $colorType         = [type]'Color'
+
+    # Resolve markup-safe color strings from legacy color names
+    $resolveMarkup = {
+      param([string]$name, [string]$fallback)
+      try {
+        $c = $colorType::FromName($name)
+        if ($null -eq $c -or $c.IsDefault) { return $fallback }
+        return $c.ToMarkup()
+      } catch { return $fallback }
+    }
+    $barColor = & $resolveMarkup $PBcolor 'seagreen1'
+    $msgColor = & $resolveMarkup ([ProgressUtil]::data.ProgressMsgcolor) 'lightyellow3'
+
+    $console  = $consoleType::Console
+    $progress = $progressType::new($console)
+    $progress.RefreshRateMs = 80
+    $progress.Columns.Clear()
+    $progress.Columns.Add($descColType::new($progress))
+    $progress.Columns.Add($progressBarColType::new($progress))
+    $progress.Columns.Add($pctColType::new($progress))
+
+    # Capture locals for the action closure
+    $capturedPct       = [Math]::Max(0, [Math]::Min(100, $percent))
+    $capturedMsg       = $message
+    $capturedBarColor  = $barColor
+    $capturedMsgColor  = $msgColor
+    $capturedCompleted = $Completed
+    $capturedSettings  = $settingsType::new()
+    $capturedSettings.MaxValue = 100
+    $capturedSettings.IsIndeterminate = $false
+
+    $progress.Start([System.Action[object]] {
+        param([object]$ctx)
+        $label = "[$capturedMsgColor]$capturedMsg[/]"
+        $task  = $ctx.AddTask($label, $capturedSettings)
+        # Jump straight to the target percentage
+        $task.SetValue($capturedPct)
+        if ($capturedCompleted) {
+          $task.Complete()
         }
       }
-      Write-Console "] " -f $PBcolor -NoNewLine
-      Write-Console ("{0,3:##0}%" -f $percent) -f $PmsgColor -NoNewLine:(!$Completed)
-    } else {
-      Write-Debug '[ProgressUtil]::data.ShowProgress is set to false. Progress bar will not be displayed. Please enable it by running [ProgressUtil]::ToggleShowProgress()'
-    }
+    )
   }
   static [Results] WaitJob([string]$progressMsg, [scriptblock]$sb) {
     return [ProgressUtil]::WaitJob($progressMsg, $sb, $null)
