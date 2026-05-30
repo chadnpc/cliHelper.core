@@ -101,7 +101,7 @@ class DownloadHelper {
       if ($show_progress) {
         # ── Phase 1: Spinner while waiting for the HTTP response ──────────────
         $status = $statusType::new($console.GetWriter())
-        $status.Spinner = "Dots"
+        $status.Spinner = ""
         $status.RefreshRateMs = 80
 
         $status.Start('Connecting…', {
@@ -230,7 +230,7 @@ class DownloadHelper {
       if ($show_progress) {
         # ── Phase 1: Spinner while waiting for the HTTP response ──────────────
         $status = $statusType::new($console.GetWriter())
-        $status.Spinner = "Dots"
+        $status.Spinner = ""
         $status.RefreshRateMs = 80
 
         $status.Start('Connecting…', {

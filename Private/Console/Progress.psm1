@@ -412,22 +412,12 @@ class SpinnerColumn : ProgressColumn {
   hidden [void] EnsureSpinner() {
     if ($null -eq $this.Spinner -or $null -eq $this.Spinner.Frames) {
       if ($null -eq [SpinnerColumn]::_defaultSpinnerCACHE) {
-        $s = [Spinner]::new()
-        $s.Name = 'Default'
-        $s.Interval = [TimeSpan]::FromMilliseconds(100)
-        $s.IsUnicode = $true
-        $s.Frames = @('⣷', '⣯', '⣟', '⡿', '⢿', '⣻', '⣽', '⣾')
-        [SpinnerColumn]::_defaultSpinnerCACHE = $s
+        [SpinnerColumn]::_defaultSpinnerCACHE = [Spinner]::new('Default')
       }
       $this.Spinner = [SpinnerColumn]::_defaultSpinnerCACHE
     }
     if ($null -eq [SpinnerColumn]::_asciiSpinnerCACHE) {
-      $s = [Spinner]::new()
-      $s.Name = 'Ascii'
-      $s.Interval = [TimeSpan]::FromMilliseconds(100)
-      $s.IsUnicode = $false
-      $s.Frames = @('-', '\', '|', '/', '-', '\', '|', '/')
-      [SpinnerColumn]::_asciiSpinnerCACHE = $s
+      [SpinnerColumn]::_asciiSpinnerCACHE = [Spinner]::new('Ascii')
     }
   }
 
