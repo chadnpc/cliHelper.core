@@ -89,58 +89,101 @@ class DownloadHelper {
     $pctColType         = [type]'PercentageColumn'
 
     $console  = $consoleType::Console
-    $console.MarkupLine("[steelblue1][+][/] [steelblue1]$Progress_Msg[/]")
+    $console.MarkupLine("[steelblue1][+][/] [steelblue1]$Progress_Msg[/]")    
+    $stream = $null
+    $fileStream = $null
+    $response = $null
+    $Outdir = [IO.Path]::GetDirectoryName($outPath)
+    if (![System.IO.Directory]::Exists($Outdir)) { [void][System.IO.Directory]::CreateDirectory($Outdir) }
 
-    if ($show_progress) {
-      $progress = $progressType::new($console)
-      $progress.RefreshRateMs = 80
-      $progress.Columns.Clear()
-      $progress.Columns.Add($descColType::new($progress))
-      $progress.Columns.Add($progressBarColType::new($progress))
-      $progress.Columns.Add($pctColType::new($progress))
+    try {
+      $request = [System.Net.HttpWebRequest]::Create($url)
+      $request.UserAgent = "Mozilla/5.0"
+      
+      $fileStream = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+      $totalBytesReceived = 0
+      $buffer = New-Object byte[] 8192
 
-      $capturedMsg      = $Progress_Msg
-      $capturedStream   = $stream
-      $capturedBuffer   = $buffer
-      $capturedFileStream = $fileStream
-      $capturedLength   = $contentLength
-      $capturedSettings = $settingsType::new()
-      $capturedSettings.MaxValue = 100
-      $capturedSettings.IsIndeterminate = $contentLength -le 0
+      if ($show_progress) {
+        $progress = $progressType::new($console)
+        $progress.RefreshRateMs = 80
+        $progress.Columns.Clear()
+        $progress.Columns.Add($descColType::new($progress))
+        $progress.Columns.Add($progressBarColType::new($progress))
+        $progress.Columns.Add($pctColType::new($progress))
 
-      $capturedTotal = [ref]$totalBytesReceived
+        $capturedMsg      = $Progress_Msg
+        $capturedBuffer   = $buffer
+        $capturedFileStream = $fileStream
+        $capturedSettings = $settingsType::new()
+        $capturedSettings.MaxValue = 100
+        $capturedSettings.IsIndeterminate = $true # Indeterminate while connecting
 
-      $progress.Start([System.Action[object]] {
-          param([object]$ctx)
-          $task = $ctx.AddTask("[lightyellow3]$capturedMsg[/]", $capturedSettings)
-          while ($true) {
-            $bytesRead = $capturedStream.Read($capturedBuffer, 0, $capturedBuffer.Length)
-            if ($bytesRead -le 0) { break }
-            $capturedTotal.Value += $bytesRead
-            $capturedFileStream.Write($capturedBuffer, 0, $bytesRead)
-            if ($capturedLength -gt 0) {
-              $pct = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $capturedLength * 100))
-              $task.SetValue($pct)
-            } else {
-              # indeterminate: heartbeat tick to animate the bar
-              $task.SetValue(0)
+        $capturedTotal = [ref]$totalBytesReceived
+        $capturedRequest = $request
+        $capturedResponseRef = [ref]$null
+        $capturedStreamRef = [ref]$null
+
+        $progress.Start([System.Action[object]] {
+            param([object]$ctx)
+            $task = $ctx.AddTask("[lightyellow3]Connecting...[/]", $capturedSettings)
+
+            $responseTask = $capturedRequest.GetResponseAsync()
+            while (!$responseTask.IsCompleted) {
+              $task.SetValue(0) # Heartbeat
+              [System.Threading.Thread]::Sleep(50)
             }
-          }
-          $task.Complete()
-        }
-      )
-      $totalBytesReceived = $capturedTotal.Value
-    } else {
-      # No progress display — drain the stream directly
-      while ($true) {
-        $bytesRead = $stream.Read($buffer, 0, $buffer.Length)
-        if ($bytesRead -le 0) { break }
-        $totalBytesReceived += $bytesRead
-        $fileStream.Write($buffer, 0, $bytesRead)
-      }
-    }
+            if ($responseTask.IsFaulted) { throw $responseTask.Exception.InnerException }
+            $res = $responseTask.Result
+            $capturedResponseRef.Value = $res
+            $contentLength = $res.ContentLength
+            $streamData = $res.GetResponseStream()
+            $capturedStreamRef.Value = $streamData
 
-    try { Invoke-Command -ScriptBlock { if ($stream) { $stream.Close() }; if ($fileStream) { $fileStream.Close() }; if ($response) { $response.Dispose() } } -ErrorAction SilentlyContinue } catch { $null }
+            if ($contentLength -gt 0) {
+              $task._state.IsIndeterminate = $false
+              $task.SetDescription("[lightyellow3]$capturedMsg[/]")
+            } else {
+              $task.SetDescription("[lightyellow3]$capturedMsg[/]")
+            }
+
+            while ($true) {
+              $bytesRead = $streamData.Read($capturedBuffer, 0, $capturedBuffer.Length)
+              if ($bytesRead -le 0) { break }
+              $capturedTotal.Value += $bytesRead
+              $capturedFileStream.Write($capturedBuffer, 0, $bytesRead)
+              
+              if ($contentLength -gt 0) {
+                $pct = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $contentLength * 100))
+                $task.SetValue($pct)
+              } else {
+                # indeterminate: heartbeat tick
+                $task.SetValue(0)
+              }
+            }
+            if ($contentLength -le 0) { $task._state.IsIndeterminate = $false }
+            $task.Complete()
+          }
+        )
+        $totalBytesReceived = $capturedTotal.Value
+        $response = $capturedResponseRef.Value
+        $stream = $capturedStreamRef.Value
+      } else {
+        # No progress display — drain the stream directly
+        $response = $request.GetResponse()
+        $stream = $response.GetResponseStream()
+        while ($true) {
+          $bytesRead = $stream.Read($buffer, 0, $buffer.Length)
+          if ($bytesRead -le 0) { break }
+          $totalBytesReceived += $bytesRead
+          $fileStream.Write($buffer, 0, $bytesRead)
+        }
+      }
+    } catch {
+      throw $_
+    } finally {
+      try { Invoke-Command -ScriptBlock { if ($stream) { $stream.Close() }; if ($fileStream) { $fileStream.Close() }; if ($response) { $response.Dispose() } } -ErrorAction SilentlyContinue } catch { $null }
+    }
     return (Get-Item $outPath)
   }
   [IO.FileInfo] DownloadFileAsync([uri]$Uri, [string]$OutFile, $dlEvent, [bool]$verbose) {
@@ -167,6 +210,7 @@ class DownloadHelper {
 
     $stream = $null
     $fileStream = $null
+    $response = $null
     $outPath = [IO.Path]::GetFullPath($OutFile)
     $Outdir = [IO.Path]::GetDirectoryName($outPath)
     if (![System.IO.Directory]::Exists($Outdir)) { [void][System.IO.Directory]::CreateDirectory($Outdir) }
@@ -174,9 +218,6 @@ class DownloadHelper {
     try {
       $request = [System.Net.HttpWebRequest]::Create($Uri)
       $request.UserAgent = "Mozilla/5.0"
-      $response = $request.GetResponse()
-      $contentLength = $response.ContentLength
-      $stream = $response.GetResponseStream()
       $buffer = New-Object byte[] 8192
       
       $fileStream = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
@@ -190,29 +231,51 @@ class DownloadHelper {
         $progress.Columns.Add($progressBarColType::new($progress))
         $progress.Columns.Add($pctColType::new($progress))
 
-        $capturedStream   = $stream
         $capturedBuffer   = $buffer
         $capturedFileStream = $fileStream
-        $capturedLength   = $contentLength
         $capturedSettings = $settingsType::new()
         $capturedSettings.MaxValue = 100
-        $capturedSettings.IsIndeterminate = $contentLength -le 0
+        $capturedSettings.IsIndeterminate = $true # Indeterminate initially while connecting
 
         $capturedTotal = [ref]$totalBytesReceived
         $capturedDlEvent = $dlEvent
+        $capturedRequest = $request
+        $capturedResponseRef = [ref]$null
+        $capturedStreamRef = [ref]$null
 
         $progress.Start([System.Action[object]] {
             param([object]$ctx)
-            $pbTask = $ctx.AddTask('[lightyellow3]Downloading[/]', $capturedSettings)
+            $pbTask = $ctx.AddTask('[lightyellow3]Connecting...[/]', $capturedSettings)
+
+            # Connect asynchronously to allow UI ticks
+            $responseTask = $capturedRequest.GetResponseAsync()
+            while (!$responseTask.IsCompleted) {
+              $pbTask.SetValue(0)
+              [System.Threading.Thread]::Sleep(50)
+            }
+            if ($responseTask.IsFaulted) { throw $responseTask.Exception.InnerException }
+            $res = $responseTask.Result
+            $capturedResponseRef.Value = $res
+            $contentLength = $res.ContentLength
+            $streamData = $res.GetResponseStream()
+            $capturedStreamRef.Value = $streamData
+
+            if ($contentLength -gt 0) {
+              $pbTask._state.IsIndeterminate = $false
+              $pbTask.SetDescription("[lightyellow3]Downloading[/]")
+            } else {
+              $pbTask.SetDescription("[lightyellow3]Downloading[/]")
+            }
+
             while ($true) {
-              $bytesRead = $capturedStream.Read($capturedBuffer, 0, $capturedBuffer.Length)
+              $bytesRead = $streamData.Read($capturedBuffer, 0, $capturedBuffer.Length)
               if ($bytesRead -le 0) { break }
               $capturedTotal.Value += $bytesRead
               $capturedFileStream.Write($capturedBuffer, 0, $bytesRead)
               
-              if ($capturedLength -gt 0) {
-                $pct = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $capturedLength * 100))
-                $received = $capturedDlEvent.GetSizeProgress($capturedTotal.Value, $capturedLength)
+              if ($contentLength -gt 0) {
+                $pct = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $contentLength * 100))
+                $received = $capturedDlEvent.GetSizeProgress($capturedTotal.Value, $contentLength)
                 $pbTask.SetDescription("[lightyellow3]Downloading[/] [grey]$received[/]")
                 $pbTask.SetValue($pct)
               } else {
@@ -222,12 +285,19 @@ class DownloadHelper {
                 $pbTask.SetValue(0)
               }
             }
+            if ($contentLength -le 0) { $pbTask._state.IsIndeterminate = $false }
             $pbTask.Complete()
           }
         )
         $totalBytesReceived = $capturedTotal.Value
+        $response = $capturedResponseRef.Value
+        $stream = $capturedStreamRef.Value
+        $contentLength = if ($response) { $response.ContentLength } else { 0 }
       } else {
         # No progress UI
+        $response = $request.GetResponse()
+        $stream = $response.GetResponseStream()
+        $contentLength = $response.ContentLength
         while ($true) {
           $bytesRead = $stream.Read($buffer, 0, $buffer.Length)
           if ($bytesRead -le 0) { break }
@@ -244,7 +314,8 @@ class DownloadHelper {
         }
       }
     } catch {
-      $console.MarkupLine("  [red]$($_.Exception.Message)[/]")
+      $escapedMsg = $_.Exception.GetBaseException().Message -replace '\[', '[[' -replace '\]', ']]'
+      $console.MarkupLine("  [red]$escapedMsg[/]")
       throw $_
     } finally {
       if ($verbose -and [IO.File]::Exists($outPath)) {
