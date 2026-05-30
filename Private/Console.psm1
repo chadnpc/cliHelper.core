@@ -162,7 +162,7 @@ class ConsoleHelper {
     )
   }
   static [void] DemoFigletText() {
-    $fig = [FigletText]::new([FigletFont]::DEFAULT_3D, 'ansiconsole')
+    $fig = [FigletText]::new("DEFAULT_3D", 'ansiconsole')
     [AnsiConsole]::Console.Write($fig)
   }
   static [object] DemoSearchableListPrompt() {
