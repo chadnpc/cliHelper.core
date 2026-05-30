@@ -559,6 +559,7 @@ class FigletFont {
 
   FigletFont() { [void]$this.ToDefault() }
   FigletFont([string]$Name) {
+    [ValidateNotNullOrWhiteSpace()][string]$Name = $Name
     [void][FigletFont]::From($Name, [ref]$this)
   }
   FigletFont([FigletFontName]$Name) {
