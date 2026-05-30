@@ -202,7 +202,7 @@ class ProgressUtil {
   static [void] WriteProgressBar([int]$percent, [bool]$update, [int]$PBLength, [string]$message, [bool]$Completed, [string]$PBcolor) {
     <#
     .SYNOPSIS
-      Renders a progress bar using the Spectre.Console Progress engine (markup + ANSI colors).
+      Renders a progress bar using the Progress engine (markup + ANSI colors).
       Colors are resolved via [Color]::FromName() → markup string so no [RGB] cast is required.
     .EXAMPLE
       for ($i = 0; $i -le 100; $i++) { [ProgressUtil]::WriteProgressBar($i, $true, 40, "doing stuff") }
