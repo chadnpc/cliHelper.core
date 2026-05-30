@@ -177,9 +177,9 @@ class DownloadHelper {
     } catch {
       throw $_
     } finally {
-      try { if ($stream) { $stream.Close() } } catch {}
-      try { if ($fileStream) { $fileStream.Close() } } catch {}
-      try { if ($response) { $response.Dispose() } } catch {}
+      try { if ($stream) { $stream.Close() } } catch { $null }
+      try { if ($fileStream) { $fileStream.Close() } } catch { $null }
+      try { if ($response) { $response.Dispose() } } catch { $null }
     }
     return (Get-Item $outPath)
   }
@@ -323,9 +323,9 @@ class DownloadHelper {
       if ($verbose -and [IO.File]::Exists($outPath)) {
         $console.MarkupLine("  [steelblue1]OutPath: '[/][white]$outPath[/][steelblue1]'[/]")
       }
-      try { if ($stream) { $stream.Close() } } catch {}
-      try { if ($fileStream) { $fileStream.Close() } } catch {}
-      try { if ($response) { $response.Dispose() } } catch {}
+      try { if ($stream) { $stream.Close() } } catch { $null }
+      try { if ($fileStream) { $fileStream.Close() } } catch { $null }
+      try { if ($response) { $response.Dispose() } } catch { $null }
     }
 
     if ([IO.File]::Exists($outPath)) {
