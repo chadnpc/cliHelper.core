@@ -62,7 +62,7 @@ class DownloadHelper {
     $response = $request.GetResponse()
     $contentLength = $response.ContentLength
     $stream = $response.GetResponseStream()
-    $buffer = New-Object byte[] 1024
+    $buffer = New-Object byte[] 8192
     $outPath = [IO.Path]::GetFullPath($outFile)
     if ([System.IO.Directory]::Exists($outFile)) {
       if (!$Force) { throw [ArgumentException]::new("Please provide valid file path, not a directory.", "outFile") }
@@ -76,63 +76,164 @@ class DownloadHelper {
     }
     $fileStream = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
     $totalBytesReceived = 0
-    $totalBytesToReceive = $contentLength
-    $OgForeground = (Get-Variable host).Value.UI.RawUI.ForegroundColor
     $Progress_Msg = $this.DownloadOptions.ProgressMessage
     $show_progress = $this.DownloadOptions.ShowProgress
-    if ([string]::IsNullOrWhiteSpace($Progress_Msg)) { $Progress_Msg = "[+] Downloading $name to $outFile" }
-    Write-Host $Progress_Msg -ForegroundColor Magenta
-    $(Get-Variable host).Value.UI.RawUI.ForegroundColor = [ConsoleColor]::Green
-    while ($totalBytesToReceive -gt 0) {
-      $bytesRead = $stream.Read($buffer, 0, 1024)
-      $totalBytesReceived += $bytesRead
-      $totalBytesToReceive -= $bytesRead
-      $fileStream.Write($buffer, 0, $bytesRead)
-      if ($show_progress) {
-        [int]$PMetric = [math]::Round($totalBytesReceived / $contentLength * 100)
-        [ProgressUtil]::WriteProgressBar($PMetric, $true, $this.DownloadOptions.ProgressBarLength)
+    if ([string]::IsNullOrWhiteSpace($Progress_Msg)) { $Progress_Msg = "Downloading $name" }
+
+    # --- Runtime type resolution (avoids parse-time forward-ref failures) ---
+    $consoleType        = [type]'AnsiConsole'
+    $progressType       = [type]'Progress'
+    $settingsType       = [type]'ProgressTaskSettings'
+    $descColType        = [type]'TaskDescriptionColumn'
+    $progressBarColType = [type]'ProgressBarColumn'
+    $pctColType         = [type]'PercentageColumn'
+
+    $console  = $consoleType::Console
+    $console.MarkupLine("[steelblue1][+][/] [steelblue1]$Progress_Msg[/]")
+
+    if ($show_progress) {
+      $progress = $progressType::new($console)
+      $progress.RefreshRateMs = 80
+      $progress.Columns.Clear()
+      $progress.Columns.Add($descColType::new($progress))
+      $progress.Columns.Add($progressBarColType::new($progress))
+      $progress.Columns.Add($pctColType::new($progress))
+
+      $capturedMsg      = $Progress_Msg
+      $capturedStream   = $stream
+      $capturedBuffer   = $buffer
+      $capturedFileStream = $fileStream
+      $capturedLength   = $contentLength
+      $capturedSettings = $settingsType::new()
+      $capturedSettings.MaxValue = 100
+      $capturedSettings.IsIndeterminate = $contentLength -le 0
+
+      $capturedTotal = [ref]$totalBytesReceived
+
+      $progress.Start([System.Action[object]] {
+          param([object]$ctx)
+          $task = $ctx.AddTask("[lightyellow3]$capturedMsg[/]", $capturedSettings)
+          while ($true) {
+            $bytesRead = $capturedStream.Read($capturedBuffer, 0, $capturedBuffer.Length)
+            if ($bytesRead -le 0) { break }
+            $capturedTotal.Value += $bytesRead
+            $capturedFileStream.Write($capturedBuffer, 0, $bytesRead)
+            if ($capturedLength -gt 0) {
+              $pct = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $capturedLength * 100))
+              $task.SetValue($pct)
+            } else {
+              # indeterminate: heartbeat tick to animate the bar
+              $task.SetValue(0)
+            }
+          }
+          $task.Complete()
+        }
+      )
+      $totalBytesReceived = $capturedTotal.Value
+    } else {
+      # No progress display — drain the stream directly
+      while ($true) {
+        $bytesRead = $stream.Read($buffer, 0, $buffer.Length)
+        if ($bytesRead -le 0) { break }
+        $totalBytesReceived += $bytesRead
+        $fileStream.Write($buffer, 0, $bytesRead)
       }
     }
-    $(Get-Variable host).Value.UI.RawUI.ForegroundColor = $OgForeground
+
     try { Invoke-Command -ScriptBlock { $stream.Close(); $fileStream.Close() } -ErrorAction SilentlyContinue } catch { $null }
-    return (Get-Item $outFile)
+    return (Get-Item $outPath)
   }
   [IO.FileInfo] DownloadFileAsync([uri]$Uri, [string]$OutFile, $dlEvent, [bool]$verbose) {
+    <#
+    .SYNOPSIS
+      Async download using WebClient.DownloadFileTaskAsync driven by a Spectre.Console
+      Progress live bar. Register-ObjectEvent captures DownloadProgressChanged events;
+      the Progress.Start() action polls those events and calls task.SetValue() each tick.
+    #>
     $show_progress = $this.DownloadOptions.ShowProgress
+
+    # --- Runtime type resolution ---
+    $consoleType        = [type]'AnsiConsole'
+    $progressType       = [type]'Progress'
+    $settingsType       = [type]'ProgressTaskSettings'
+    $descColType        = [type]'TaskDescriptionColumn'
+    $progressBarColType = [type]'ProgressBarColumn'
+    $pctColType         = [type]'PercentageColumn'
+
+    $console = $consoleType::Console
+
+    if ($verbose) {
+      $console.MarkupLine("  [steelblue1]Attempting to download '[/][white]$Uri[/][steelblue1]' ...[/]")
+    }
+
+    $webClient = $null
     try {
       $webClient = [System.Net.WebClient]::new()
-      # $webClient.Credentials = $login
-      $task = $webClient.DownloadFileTaskAsync($Uri, $OutFile)
+      $task      = $webClient.DownloadFileTaskAsync($Uri, $OutFile)
+
+      # Register the progress-changed event so $dlEvent.Data is populated
       Register-ObjectEvent -InputObject $webClient -EventName DownloadProgressChanged -SourceIdentifier $dlEvent.Id | Out-Null
-      $verbose ? (Write-Console "  Attempting to download '$Uri' ..." -f SteelBlue) : $null
-      while (!$task.IsCompleted) {
-        if ($null -ne $dlEvent.Data) {
-          $ReceivedData = $dlEvent.Data.BytesReceived
-          $TotalToReceive = $dlEvent.Data.TotalBytesToReceive
-          $TotalPercent = $dlEvent.Data.ProgressPercentage
-          if ($null -ne $ReceivedData -and $show_progress) {
-            [ProgressUtil]::WriteProgressBar([int]$TotalPercent, "  Downloading : $($dlEvent.GetSizeProgress($ReceivedData, $TotalToReceive))")
+
+      if ($show_progress) {
+        $progress = $progressType::new($console)
+        $progress.RefreshRateMs = 80
+        $progress.Columns.Clear()
+        $progress.Columns.Add($descColType::new($progress))
+        $progress.Columns.Add($progressBarColType::new($progress))
+        $progress.Columns.Add($pctColType::new($progress))
+
+        $capturedTask    = $task
+        $capturedDlEvent = $dlEvent
+        $capturedSettings = $settingsType::new()
+        $capturedSettings.MaxValue = 100
+        $capturedSettings.IsIndeterminate = $false
+
+        $progress.Start([System.Action[object]] {
+            param([object]$ctx)
+            $pbTask = $ctx.AddTask('[lightyellow3]Downloading[/]', $capturedSettings)
+            while (!$capturedTask.IsCompleted) {
+              $evtData = $capturedDlEvent.Data
+              if ($null -ne $evtData) {
+                $pct = [Math]::Max(0, [Math]::Min(100, [int]$evtData.ProgressPercentage))
+                $received = $capturedDlEvent.GetSizeProgress($evtData.BytesReceived, $evtData.TotalBytesToReceive)
+                $pbTask.SetDescription("[lightyellow3]Downloading[/] [grey]$received[/]")
+                $pbTask.SetValue($pct)
+              } else {
+                # Event data not yet available — indeterminate heartbeat
+                $pbTask.SetValue(0)
+              }
+              [System.Threading.Thread]::Sleep(50)
+            }
+            $pbTask.Complete()
           }
+        )
+      } else {
+        # No progress UI — just wait for completion
+        while (!$task.IsCompleted) {
+          [System.Threading.Thread]::Sleep(50)
         }
-        [System.Threading.Thread]::Sleep(50)
+      }
+
+      if ($task.IsFaulted) {
+        throw $task.Exception.GetBaseException()
       }
     } catch {
-      Write-Console $_.Exception.Message -f Salmon
+      $console.MarkupLine("  [red]$($_.Exception.Message)[/]")
       throw $_
     } finally {
-      if ($show_progress) {
-        if ($dlEvent.Data.BytesReceived -eq $dlEvent.Data.TotalBytesToReceive) {
-          [ProgressUtil]::WriteProgressBar(100, $true, "  Downloaded $($dlEvent.GetSizeProgress())", $true)
+      if ($show_progress -and $null -ne $dlEvent.Data) {
+        if ($dlEvent.Data.BytesReceived -eq $dlEvent.Data.TotalBytesToReceive -and $dlEvent.Data.TotalBytesToReceive -gt 0) {
+          $console.MarkupLine("  [green]✓ Downloaded $($dlEvent.GetSizeProgress())[/]")
         } else {
-          # WriteProgressBar(int percent, bool update, int PBLength, string message, bool Completed, string PBcolor)
-          [ProgressUtil]::WriteProgressBar(0, $true, "  Download Failed: $($Uri.AbsoluteUri)", $true, "Red")
+          $console.MarkupLine("  [red]✗ Download failed: $($Uri.AbsoluteUri)[/]")
         }
       }
-      if ([IO.File]::Exists($OutFile)) {
-        $verbose ? (Write-Console "  OutPath: '$OutFile'" -f SteelBlue) : $null
+      if ($verbose -and [IO.File]::Exists($OutFile)) {
+        $console.MarkupLine("  [steelblue1]OutPath: '[/][white]$OutFile[/][steelblue1]'[/]")
       }
       Invoke-Command { $webClient.Dispose(); Unregister-Event -SourceIdentifier $dlEvent.Id -Force -ea Ignore } -ea Ignore
     }
+
     if ([IO.File]::Exists($OutFile)) {
       return Get-Item $OutFile
     } else {
