@@ -166,13 +166,13 @@ class ProgressConfig : RenderOptions {
   [RenderOptions] ToRenderOptions() {
     # copy all base properties
     $o = [RenderOptions]@{}
-    
+
     # CRITICAL BUG FIX PRESERVATION (#1 PowerShell ETS):
     # This loop MUST iterate over $o.PsObject.Properties, NOT $this!
     # $this (ProgressConfig) dynamically injects PSScriptProperties like 'ShowProgress'.
     # Iterating over $this would attempt to assign these to $o, aborting the timer thread.
     foreach ($name in $o.PsObject.Properties.Name) {
-        $o.$name = $this.$name
+      $o.$name = $this.$name
     }
     return $o
   }
@@ -298,6 +298,7 @@ class LiveDisplayRegion : IDisposable {
         $this._lineCount = $targetCount
       } catch {
         Write-Warning "[LiveDisplayRegion] Render exception: $_"
+        throw $_
       }
     } finally {
       [Monitor]::Exit($this._syncRoot)
@@ -433,7 +434,7 @@ class SpinnerColumn : ProgressColumn {
     $this.EnsureSpinner()
     $frames = if ($options.Unicode -or $this.Spinner.IsUnicode -eq $false) { $this.Spinner.Frames } else { [SpinnerColumn]::_asciiSpinnerCACHE.Frames }
     if ($null -eq $frames -or $frames.Length -eq 0) { return 1 }
-    
+
     $maxWidth = 1
     foreach ($frame in $frames) {
       $len = [Cell]::GetCellLength($frame)
@@ -465,7 +466,7 @@ class SpinnerColumn : ProgressColumn {
     if ($null -eq $spinnerList -or $spinnerList.Length -eq 0) {
       return [Markup]::new(" ", $this.Style)
     }
-    
+
     $frame = $spinnerList[$this._index % $spinnerList.Length]
 
     return [Markup]::new($frame, $this.Style)
@@ -559,7 +560,7 @@ class ProgressRenderable : IRenderable {
     try {
       # CRITICAL BUG FIX PRESERVATION (#2 Background Runspaces vs Renderers):
       # This Progress Engine renders explicitly via linear column formatting instead of using [Grid].
-      # [Grid] leverages recursive TableMeasurers which can fail abruptly with background 
+      # [Grid] leverages recursive TableMeasurers which can fail abruptly with background
       # [System.Threading.Timer] threads if [Segment]::Truncate aborts during a tight layout scale.
       $cfg = if ($options -is [ProgressConfig]) { [ProgressConfig]$options } else { [ProgressConfig]::new() }
       $tasks = $this.Context.GetTasks()
@@ -573,17 +574,17 @@ class ProgressRenderable : IRenderable {
           $col = $this.Owner.Columns[$i]
           $w = $col.GetColumnWidth($cfg)
           if ($null -ne $w) {
-              $colWidths[$i] = [Math]::Max($colWidths[$i], [int]$w)
+            $colWidths[$i] = [Math]::Max($colWidths[$i], [int]$w)
           } else {
-              # Pass zero DeltaTime during measurement phase to prevent double-ticking animations
-              $r = $col.Render($cfg, $task, [TimeSpan]::Zero)
-              if ($null -ne $r) {
-                  # CRITICAL BUG FIX PRESERVATION (#3 PowerShell Polymorphism):
-                  # We wrap $r inside an array @($r)[0] to guarantee we evaluate the concrete instance.
-                  # In certain PS versions passing interfaces natively over virtual tables fails dispatching to inherited classes.
-                  $m = @($r)[0].Measure($renderOpts, $maxWidth)
-                  $colWidths[$i] = [Math]::Max($colWidths[$i], [int]$m.Max)
-              }
+            # Pass zero DeltaTime during measurement phase to prevent double-ticking animations
+            $r = $col.Render($cfg, $task, [TimeSpan]::Zero)
+            if ($null -ne $r) {
+              # CRITICAL BUG FIX PRESERVATION (#3 PowerShell Polymorphism):
+              # We wrap $r inside an array @($r)[0] to guarantee we evaluate the concrete instance.
+              # In certain PS versions passing interfaces natively over virtual tables fails dispatching to inherited classes.
+              $m = @($r)[0].Measure($renderOpts, $maxWidth)
+              $colWidths[$i] = [Math]::Max($colWidths[$i], [int]$m.Max)
+            }
           }
         }
       }
@@ -595,23 +596,23 @@ class ProgressRenderable : IRenderable {
           $col = $this.Owner.Columns[$i]
           $renderable = $col.Render($cfg, $task, $this.DeltaTime)
           if ($null -eq $renderable) { continue }
-          
+
           $colW = $colWidths[$i]
           $rendered = @($renderable)[0].Render($renderOpts, $colW)
           # Avoid AddRange unwrapping anomalies
           foreach ($s in $rendered) { $lineSegments.Add($s) }
-          
+
           $actualLen = [Segment]::CellCount($rendered)
           if ($actualLen -lt $colW) {
             $pad = " " * ($colW - $actualLen)
             $lineSegments.Add([Segment]::new($pad, [Style]::Plain))
           }
-          
+
           if ($i -lt $this.Owner.Columns.Count - 1) {
             $lineSegments.Add([Segment]::new(" ", [Style]::Plain))
           }
         }
-        
+
         if ([Segment]::CellCount($lineSegments) -gt $maxWidth) {
           foreach ($s in [Segment]::Truncate($lineSegments, $maxWidth)) { $result.Add($s) }
         } else {
