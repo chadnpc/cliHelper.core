@@ -8,6 +8,6 @@ function Write-Figlet {
   )
   process {
     $fig = [FigletText]::new([FigletFont]$Font, $Text)
-    [AnsiConsole]::Console.Write($fig)
+    return [AnsiConsole]::Console.Write($fig)
   }
 }
