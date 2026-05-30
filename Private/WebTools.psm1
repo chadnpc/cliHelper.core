@@ -81,7 +81,6 @@ class DownloadHelper {
     $progressBarColType = [type]'ProgressBarColumn'
     $pctColType = [type]'PercentageColumn'
     $spinnerColType = [type]'SpinnerColumn'
-    $spinnerKnownType = [type]'SpinnerKnown'
 
     $console = $consoleType::Console
     $console.MarkupLine("[steelblue1][+][/] [steelblue1]$Progress_Msg[/]")
@@ -102,7 +101,7 @@ class DownloadHelper {
       if ($show_progress) {
         # ── Phase 1: Spinner while waiting for the HTTP response ──────────────
         $status = $statusType::new($console.GetWriter())
-        $status.Spinner = $spinnerKnownType::Dots
+        $status.Spinner = "Dots"
         $status.RefreshRateMs = 80
 
         $status.Start('Connecting…', {
@@ -202,7 +201,7 @@ class DownloadHelper {
     $progressBarColType = [type]'ProgressBarColumn'
     $pctColType = [type]'PercentageColumn'
     $spinnerColType = [type]'SpinnerColumn'
-    $spinnerKnownType = [type]'SpinnerKnown'
+
 
     $console = $consoleType::Console
     $console.use_animation($false)
@@ -231,7 +230,7 @@ class DownloadHelper {
       if ($show_progress) {
         # ── Phase 1: Spinner while waiting for the HTTP response ──────────────
         $status = $statusType::new($console.GetWriter())
-        $status.Spinner = $spinnerKnownType::Dots
+        $status.Spinner = "Dots"
         $status.RefreshRateMs = 80
 
         $status.Start('Connecting…', {
