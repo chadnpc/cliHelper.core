@@ -305,9 +305,9 @@ class ConsoleHelper {
     $results | Out-Null
   }
   static [void] DemoStatus() {
-    $writer = [AnsiConsole]::Console.GetWriter()
+    $writer = [AnsiConsole]::Console.Writer
     $status = [Status]::new($writer)
-    $status.Spinner = [SpinnerKnown]::Dots
+    $status.Spinner = [SpinnerKnown]::BetaWave
     $status.RefreshRateMs = 80
 
     $status.Start('Downloading metadata', [Action[StatusContext]] {
