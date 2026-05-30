@@ -297,6 +297,7 @@ class LiveDisplayRegion : IDisposable {
 
         $this._lineCount = $targetCount
       } catch {
+        # throwing an error at this stage crashes the terminal! so don't do it.
         $m = "[LiveDisplayRegion] Render exception: $($_.Exception.Message)`n {0}" -f $($_.ScriptStackTrace -join "`n")
         Write-Warning -Message $m
       }
