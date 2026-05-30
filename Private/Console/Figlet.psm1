@@ -557,27 +557,12 @@ class FigletFont {
   [char]$Hardblank
   [int]$SmushingRules
 
+  FigletFont() {}
+  FigletFont([string]$Name) {
+    [void][FigletFont]::From([FigletFontName]$Name, [ref]$this)
+  }
   FigletFont([FigletFontName]$Name) {
-    $fonts_in_repo = [IO.DirectoryInfo][IO.Path]::Combine((Resolve-Path .).Path, "Private", "fonts")
-    $fonts_in_module_path = [IO.DirectoryInfo][IO.Path]::Combine((Get-InstalledModule cliHelper.core).InstalledLocation, "Private", "fonts")
-    $font_path = $(if ($fonts_in_repo.Exists) {
-        [IO.Path]::Combine($fonts_in_repo.FullName, "$Name.flf")
-      } elseif ($fonts_in_module_path.Exists) {
-        [IO.Path]::Combine($fonts_in_module_path.FullName, "$Name.flf")
-      } else {
-        "$Name.flf"
-      }
-    )
-    if (![File]::Exists($font_path)) {
-      throw "Could not find $Name.flf font."
-    }
-    $font = [FigletFont]::Load($font_path)
-    $this._characters = $font._characters
-    $this.Height = $font.Height
-    $this.Baseline = $font.Baseline
-    $this.MaxWidth = $font.MaxWidth
-    $this.Hardblank = $font.Hardblank
-    $this.SmushingRules = $font.SmushingRules
+    [void][FigletFont]::From($Name, [ref]$this)
   }
   FigletFont([List[FigletCharacter]]$characters, [FigletHeader]$header) {
     $this._characters = [Dictionary[int, FigletCharacter]]::new()
@@ -601,6 +586,22 @@ class FigletFont {
       [FigletFont]::STANDARD = [FigletFont]::new("standard")
     }
     return [FigletFont]::STANDARD
+  }
+  static [FigletFont] From([FigletFontName]$Name, [ref]$o) {
+    if ($null -eq [FigletFont]::$Name) {
+      $font_flf = [FigletFont]::GetFontflfPath($Name.ToString())
+      $font = [FigletFont]::Load($font_flf)
+      $o.Value._characters = $font._characters
+      $o.Value.Height = $font.Height
+      $o.Value.Baseline = $font.Baseline
+      $o.Value.MaxWidth = $font.MaxWidth
+      $o.Value.Hardblank = $font.Hardblank
+      $o.Value.SmushingRules = $font.SmushingRules
+      [FigletFont]::$Name = $o.Value
+    } else {
+      Write-Host "using font $Name" -f Green
+    }
+    return [FigletFont]::$Name
   }
   static [FigletFont] Load([string]$path) {
     return [FigletFont]::Load([System.IO.FileInfo]::new([PsModuleBase]::GetUnResolvedPath($path)))
@@ -653,6 +654,22 @@ class FigletFont {
       if ($null -ne $fc) { $result.Add($fc) }
     }
     return $result
+  }
+  static [string] GetFontflfPath([string]$Name) {
+    $fonts_in_repo = [IO.DirectoryInfo][IO.Path]::Combine((Resolve-Path .).Path, "Private", "fonts")
+    $fonts_in_module_path = [IO.DirectoryInfo][IO.Path]::Combine((Get-InstalledModule cliHelper.core).InstalledLocation, "Private", "fonts")
+    $font_flf_path = $(if ($fonts_in_repo.Exists) {
+        [IO.Path]::Combine($fonts_in_repo.FullName, "$Name.flf")
+      } elseif ($fonts_in_module_path.Exists) {
+        [IO.Path]::Combine($fonts_in_module_path.FullName, "$Name.flf")
+      } else {
+        "$Name.flf"
+      }
+    )
+    if (![File]::Exists($font_flf_path)) {
+      throw "Could not find $Name.flf font."
+    }
+    return $font_flf_path
   }
 
   hidden [FigletCharacter] GetCharacter([int]$code) {
