@@ -10,6 +10,6 @@ function Write-Rows {
       $markupItems.Add([Markup]::new($item))
     }
     $rows = [Rows]::new($markupItems.ToArray())
-    [AnsiConsole]::Console.Write($rows)
+    return [AnsiConsole]::Console.Write($rows)
   }
 }
