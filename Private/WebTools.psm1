@@ -68,44 +68,44 @@ class DownloadHelper {
       Remove-Item $outPath -Force -ErrorAction Ignore | Out-Null
     }
 
-    $Progress_Msg    = $this.DownloadOptions.ProgressMessage
-    $show_progress   = $this.DownloadOptions.ShowProgress
+    $Progress_Msg = $this.DownloadOptions.ProgressMessage
+    $show_progress = $this.DownloadOptions.ShowProgress
     if ([string]::IsNullOrWhiteSpace($Progress_Msg)) { $Progress_Msg = "Downloading $name" }
 
     # --- Runtime type resolution (avoids parse-time forward-ref failures) ---
-    $consoleType        = [type]'AnsiConsole'
-    $progressType       = [type]'Progress'
-    $statusType         = [type]'Status'
-    $settingsType       = [type]'ProgressTaskSettings'
-    $descColType        = [type]'TaskDescriptionColumn'
+    $consoleType = [type]'AnsiConsole'
+    $progressType = [type]'Progress'
+    $statusType = [type]'Status'
+    $settingsType = [type]'ProgressTaskSettings'
+    $descColType = [type]'TaskDescriptionColumn'
     $progressBarColType = [type]'ProgressBarColumn'
-    $pctColType         = [type]'PercentageColumn'
-    $spinnerColType     = [type]'SpinnerColumn'
-    $spinnerKnownType   = [type]'SpinnerKnown'
+    $pctColType = [type]'PercentageColumn'
+    $spinnerColType = [type]'SpinnerColumn'
+    $spinnerKnownType = [type]'SpinnerKnown'
 
     $console = $consoleType::Console
     $console.MarkupLine("[steelblue1][+][/] [steelblue1]$Progress_Msg[/]")
 
-    $stream              = $null
-    $fileStream          = $null
-    $response            = $null
-    $totalBytesReceived  = 0
-    $buffer              = New-Object byte[] 8192
-    $fileStream          = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    $stream = $null
+    $fileStream = $null
+    $response = $null
+    $totalBytesReceived = 0
+    $buffer = New-Object byte[] 8192
+    $fileStream = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
 
     try {
-      $request            = [System.Net.HttpWebRequest]::Create($url)
-      $request.UserAgent  = "Mozilla/5.0"
-      $capturedRequest    = $request
+      $request = [System.Net.HttpWebRequest]::Create($url)
+      $request.UserAgent = "Mozilla/5.0"
+      $capturedRequest = $request
       $capturedResponseRef = [ref]$null
 
       if ($show_progress) {
         # ── Phase 1: Spinner while waiting for the HTTP response ──────────────
         $status = $statusType::new($console.GetWriter())
-        $status.Spinner       = $spinnerKnownType::Dots
+        $status.Spinner = $spinnerKnownType::Dots
         $status.RefreshRateMs = 80
 
-        $status.Start('Connecting…', [System.Action[[type]'StatusContext']] {
+        $status.Start('Connecting…', {
             param($sctx)
             $responseTask = $capturedRequest.GetResponseAsync()
             while (!$responseTask.IsCompleted) {
@@ -117,21 +117,21 @@ class DownloadHelper {
           }
         )
 
-        $response      = $capturedResponseRef.Value
+        $response = $capturedResponseRef.Value
         $contentLength = $response.ContentLength
-        $stream        = $response.GetResponseStream()
+        $stream = $response.GetResponseStream()
 
         # ── Phase 2: Deterministic progress bar for the download body ─────────
-        $capturedBuffer     = $buffer
+        $capturedBuffer = $buffer
         $capturedFileStream = $fileStream
-        $capturedSettings   = $settingsType::new()
-        $capturedSettings.MaxValue        = 100
+        $capturedSettings = $settingsType::new()
+        $capturedSettings.MaxValue = 100
         $capturedSettings.IsIndeterminate = ($contentLength -le 0)
 
-        $capturedTotal     = [ref]$totalBytesReceived
-        $capturedStream    = $stream
-        $capturedLen       = $contentLength
-        $capturedMsg       = $Progress_Msg
+        $capturedTotal = [ref]$totalBytesReceived
+        $capturedStream = $stream
+        $capturedLen = $contentLength
+        $capturedMsg = $Progress_Msg
 
         $progress = $progressType::new($console)
         $progress.RefreshRateMs = 80
@@ -165,9 +165,9 @@ class DownloadHelper {
         $totalBytesReceived = $capturedTotal.Value
       } else {
         # No progress display — drain the stream directly
-        $response      = $request.GetResponse()
+        $response = $request.GetResponse()
         $contentLength = $response.ContentLength
-        $stream        = $response.GetResponseStream()
+        $stream = $response.GetResponseStream()
         while ($true) {
           $bytesRead = $stream.Read($buffer, 0, $buffer.Length)
           if ($bytesRead -le 0) { break }
@@ -178,9 +178,9 @@ class DownloadHelper {
     } catch {
       throw $_
     } finally {
-      try { if ($stream)    { $stream.Close() }    } catch {}
-      try { if ($fileStream){ $fileStream.Close() }} catch {}
-      try { if ($response)  { $response.Dispose() }} catch {}
+      try { if ($stream) { $stream.Close() } } catch {}
+      try { if ($fileStream) { $fileStream.Close() } } catch {}
+      try { if ($response) { $response.Dispose() } } catch {}
     }
     return (Get-Item $outPath)
   }
@@ -194,15 +194,15 @@ class DownloadHelper {
     $show_progress = $this.DownloadOptions.ShowProgress
 
     # --- Runtime type resolution (avoids parse-time forward-ref failures) ---
-    $consoleType        = [type]'AnsiConsole'
-    $progressType       = [type]'Progress'
-    $statusType         = [type]'Status'
-    $settingsType       = [type]'ProgressTaskSettings'
-    $descColType        = [type]'TaskDescriptionColumn'
+    $consoleType = [type]'AnsiConsole'
+    $progressType = [type]'Progress'
+    $statusType = [type]'Status'
+    $settingsType = [type]'ProgressTaskSettings'
+    $descColType = [type]'TaskDescriptionColumn'
     $progressBarColType = [type]'ProgressBarColumn'
-    $pctColType         = [type]'PercentageColumn'
-    $spinnerColType     = [type]'SpinnerColumn'
-    $spinnerKnownType   = [type]'SpinnerKnown'
+    $pctColType = [type]'PercentageColumn'
+    $spinnerColType = [type]'SpinnerColumn'
+    $spinnerKnownType = [type]'SpinnerKnown'
 
     $console = $consoleType::Console
     $console.use_animation($false)
@@ -211,30 +211,30 @@ class DownloadHelper {
       $console.MarkupLine("  [steelblue1]Attempting to download '[/][white]$Uri[/][steelblue1]' ...[/]")
     }
 
-    $stream              = $null
-    $fileStream          = $null
-    $response            = $null
-    $contentLength       = 0
-    $totalBytesReceived  = 0
-    $outPath             = [IO.Path]::GetFullPath($OutFile)
-    $Outdir              = [IO.Path]::GetDirectoryName($outPath)
+    $stream = $null
+    $fileStream = $null
+    $response = $null
+    $contentLength = 0
+    $totalBytesReceived = 0
+    $outPath = [IO.Path]::GetFullPath($OutFile)
+    $Outdir = [IO.Path]::GetDirectoryName($outPath)
     if (![System.IO.Directory]::Exists($Outdir)) { [void][System.IO.Directory]::CreateDirectory($Outdir) }
 
     try {
-      $request           = [System.Net.HttpWebRequest]::Create($Uri)
+      $request = [System.Net.HttpWebRequest]::Create($Uri)
       $request.UserAgent = "Mozilla/5.0"
-      $buffer            = New-Object byte[] 8192
-      $fileStream        = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-      $capturedRequest   = $request
+      $buffer = New-Object byte[] 8192
+      $fileStream = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+      $capturedRequest = $request
       $capturedResponseRef = [ref]$null
 
       if ($show_progress) {
         # ── Phase 1: Spinner while waiting for the HTTP response ──────────────
         $status = $statusType::new($console.GetWriter())
-        $status.Spinner       = $spinnerKnownType::Dots
+        $status.Spinner = $spinnerKnownType::Dots
         $status.RefreshRateMs = 80
 
-        $status.Start('Connecting…', [System.Action[[type]'StatusContext']] {
+        $status.Start('Connecting…', {
             param($sctx)
             $responseTask = $capturedRequest.GetResponseAsync()
             while (!$responseTask.IsCompleted) {
@@ -246,21 +246,21 @@ class DownloadHelper {
           }
         )
 
-        $response      = $capturedResponseRef.Value
+        $response = $capturedResponseRef.Value
         $contentLength = $response.ContentLength
-        $stream        = $response.GetResponseStream()
+        $stream = $response.GetResponseStream()
 
         # ── Phase 2: Deterministic progress bar for the download body ─────────
-        $capturedBuffer     = $buffer
+        $capturedBuffer = $buffer
         $capturedFileStream = $fileStream
-        $capturedDlEvent    = $dlEvent
-        $capturedSettings   = $settingsType::new()
-        $capturedSettings.MaxValue        = 100
+        $capturedDlEvent = $dlEvent
+        $capturedSettings = $settingsType::new()
+        $capturedSettings.MaxValue = 100
         $capturedSettings.IsIndeterminate = ($contentLength -le 0)
 
-        $capturedTotal  = [ref]$totalBytesReceived
+        $capturedTotal = [ref]$totalBytesReceived
         $capturedStream = $stream
-        $capturedLen    = $contentLength
+        $capturedLen = $contentLength
 
         $progress = $progressType::new($console)
         $progress.RefreshRateMs = 80
@@ -281,7 +281,7 @@ class DownloadHelper {
               $capturedFileStream.Write($capturedBuffer, 0, $bytesRead)
 
               if ($capturedLen -gt 0) {
-                $pct      = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $capturedLen * 100))
+                $pct = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $capturedLen * 100))
                 $received = $capturedDlEvent.GetSizeProgress($capturedTotal.Value, $capturedLen)
                 $pbTask.SetDescription("[lightyellow3]Downloading[/] [grey]$received[/]")
                 $pbTask.SetValue($pct)
@@ -298,9 +298,9 @@ class DownloadHelper {
         $totalBytesReceived = $capturedTotal.Value
       } else {
         # No progress UI
-        $response      = $request.GetResponse()
+        $response = $request.GetResponse()
         $contentLength = $response.ContentLength
-        $stream        = $response.GetResponseStream()
+        $stream = $response.GetResponseStream()
         while ($true) {
           $bytesRead = $stream.Read($buffer, 0, $buffer.Length)
           if ($bytesRead -le 0) { break }
@@ -324,9 +324,9 @@ class DownloadHelper {
       if ($verbose -and [IO.File]::Exists($outPath)) {
         $console.MarkupLine("  [steelblue1]OutPath: '[/][white]$outPath[/][steelblue1]'[/]")
       }
-      try { if ($stream)    { $stream.Close() }    } catch {}
-      try { if ($fileStream){ $fileStream.Close() }} catch {}
-      try { if ($response)  { $response.Dispose() }} catch {}
+      try { if ($stream) { $stream.Close() } } catch {}
+      try { if ($fileStream) { $fileStream.Close() } } catch {}
+      try { if ($response) { $response.Dispose() } } catch {}
     }
 
     if ([IO.File]::Exists($outPath)) {
