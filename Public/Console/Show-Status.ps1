@@ -10,8 +10,9 @@ function Show-Status {
     $status = [Status]::new([AnsiConsole]::Console.GetWriter())
     $status.RefreshRateMs = 80
     $status.Start($StatusText, [Action[StatusContext]] {
-      param([StatusContext]$ctx)
-      & $Action $ctx
-    })
+        param([StatusContext]$ctx)
+        & $Action $ctx
+      }
+    )
   }
 }
