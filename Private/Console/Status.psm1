@@ -85,7 +85,7 @@ class Status {
 
   Status([AnsiWriter]$writer) {
     $this.Writer = $writer
-    $this.Spinner = [SpinnerKnown]::Default
+    $this.Spinner = [Spinner]""
     $this.SpinnerStyle = [Color]::Yellow
   }
 
@@ -119,7 +119,7 @@ class Status {
       return '{0} {1}' -f $marker, $safeMessage
     }
 
-    $spinnerList = if ($this.Writer.Capabilities.Unicode -or $this.Spinner.IsUnicode -eq $false) { $this.Spinner.Frames } else { [SpinnerKnown]::Ascii.Frames }
+    $spinnerList = if ($this.Writer.Capabilities.Unicode -or $this.Spinner.IsUnicode -eq $false) { $this.Spinner.Frames } else { ([spinner]"Ascii").Frames }
     $spinnerFrame = $spinnerList[$frame % $spinnerList.Length]
 
     if ($this.SpinnerStyle -and $this.Writer.Capabilities.Ansi) {
