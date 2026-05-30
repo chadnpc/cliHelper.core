@@ -297,8 +297,8 @@ class LiveDisplayRegion : IDisposable {
 
         $this._lineCount = $targetCount
       } catch {
-        Write-Warning "[LiveDisplayRegion] Render exception: $_"
-        throw $_
+        $m = "[LiveDisplayRegion] Render exception: $($_.Exception.Message)`n {0}" -f $($_.ScriptStackTrace -join "`n")
+        Write-Warning -Message $m
       }
     } finally {
       [Monitor]::Exit($this._syncRoot)
