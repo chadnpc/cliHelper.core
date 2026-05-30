@@ -16,6 +16,6 @@ function Write-Table {
         [void]$table.AddRow([string[]]$row)
       }
     }
-    [AnsiConsole]::Console.Write($table)
+    return [AnsiConsole]::Console.Write($table)
   }
 }
