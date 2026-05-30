@@ -189,7 +189,7 @@ class DownloadHelper {
   [IO.FileInfo] DownloadFileAsync([uri]$Uri, [string]$OutFile, $dlEvent, [bool]$verbose) {
     <#
     .SYNOPSIS
-      Downloads a file synchronously while providing a Spectre.Console live progress bar.
+      Downloads a file synchronously while providing a live progress bar.
       Bypasses PowerShell event queues by chunking the download stream directly.
     #>
     $show_progress = $this.DownloadOptions.ShowProgress
