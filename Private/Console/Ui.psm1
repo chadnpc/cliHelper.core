@@ -184,7 +184,9 @@ class AnsiConsoleFactory {
 
     $writer = [AnsiWriter]::new($settings.Out.Writer)
     $writer.Capabilities = [AnsiConsoleFactory]::ResolveCapabilities($settings)
-    return [AnsiConsoleFacade]::new($writer)
+    $IAnsiConsole = [AnsiConsoleFacade]::new($writer)
+    $IAnsiConsole.PsObject.Properties.Add([PSscriptProperty]::new("Writer", { return $this.GetWriter() }))
+    return $IAnsiConsole
   }
 
   static hidden [AnsiCapabilities] ResolveCapabilities([AnsiConsoleSettings]$settings) {
