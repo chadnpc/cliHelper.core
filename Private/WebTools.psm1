@@ -140,15 +140,14 @@ class DownloadHelper {
       }
     }
 
-    try { Invoke-Command -ScriptBlock { $stream.Close(); $fileStream.Close() } -ErrorAction SilentlyContinue } catch { $null }
+    try { Invoke-Command -ScriptBlock { if ($stream) { $stream.Close() }; if ($fileStream) { $fileStream.Close() }; if ($response) { $response.Dispose() } } -ErrorAction SilentlyContinue } catch { $null }
     return (Get-Item $outPath)
   }
   [IO.FileInfo] DownloadFileAsync([uri]$Uri, [string]$OutFile, $dlEvent, [bool]$verbose) {
     <#
     .SYNOPSIS
-      Async download using WebClient.DownloadFileTaskAsync driven by a Spectre.Console
-      Progress live bar. Register-ObjectEvent captures DownloadProgressChanged events;
-      the Progress.Start() action polls those events and calls task.SetValue() each tick.
+      Downloads a file synchronously while providing a Spectre.Console live progress bar.
+      Bypasses PowerShell event queues by chunking the download stream directly.
     #>
     $show_progress = $this.DownloadOptions.ShowProgress
 
@@ -166,13 +165,22 @@ class DownloadHelper {
       $console.MarkupLine("  [steelblue1]Attempting to download '[/][white]$Uri[/][steelblue1]' ...[/]")
     }
 
-    $webClient = $null
-    try {
-      $webClient = [System.Net.WebClient]::new()
-      $task      = $webClient.DownloadFileTaskAsync($Uri, $OutFile)
+    $stream = $null
+    $fileStream = $null
+    $outPath = [IO.Path]::GetFullPath($OutFile)
+    $Outdir = [IO.Path]::GetDirectoryName($outPath)
+    if (![System.IO.Directory]::Exists($Outdir)) { [void][System.IO.Directory]::CreateDirectory($Outdir) }
 
-      # Register the progress-changed event so $dlEvent.Data is populated
-      Register-ObjectEvent -InputObject $webClient -EventName DownloadProgressChanged -SourceIdentifier $dlEvent.Id | Out-Null
+    try {
+      $request = [System.Net.HttpWebRequest]::Create($Uri)
+      $request.UserAgent = "Mozilla/5.0"
+      $response = $request.GetResponse()
+      $contentLength = $response.ContentLength
+      $stream = $response.GetResponseStream()
+      $buffer = New-Object byte[] 8192
+      
+      $fileStream = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+      $totalBytesReceived = 0
 
       if ($show_progress) {
         $progress = $progressType::new($console)
@@ -182,62 +190,73 @@ class DownloadHelper {
         $progress.Columns.Add($progressBarColType::new($progress))
         $progress.Columns.Add($pctColType::new($progress))
 
-        $capturedTask    = $task
-        $capturedDlEvent = $dlEvent
+        $capturedStream   = $stream
+        $capturedBuffer   = $buffer
+        $capturedFileStream = $fileStream
+        $capturedLength   = $contentLength
         $capturedSettings = $settingsType::new()
         $capturedSettings.MaxValue = 100
-        $capturedSettings.IsIndeterminate = $false
+        $capturedSettings.IsIndeterminate = $contentLength -le 0
+
+        $capturedTotal = [ref]$totalBytesReceived
+        $capturedDlEvent = $dlEvent
 
         $progress.Start([System.Action[object]] {
             param([object]$ctx)
             $pbTask = $ctx.AddTask('[lightyellow3]Downloading[/]', $capturedSettings)
-            while (!$capturedTask.IsCompleted) {
-              $evtData = $capturedDlEvent.Data
-              if ($null -ne $evtData) {
-                $pct = [Math]::Max(0, [Math]::Min(100, [int]$evtData.ProgressPercentage))
-                $received = $capturedDlEvent.GetSizeProgress($evtData.BytesReceived, $evtData.TotalBytesToReceive)
+            while ($true) {
+              $bytesRead = $capturedStream.Read($capturedBuffer, 0, $capturedBuffer.Length)
+              if ($bytesRead -le 0) { break }
+              $capturedTotal.Value += $bytesRead
+              $capturedFileStream.Write($capturedBuffer, 0, $bytesRead)
+              
+              if ($capturedLength -gt 0) {
+                $pct = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $capturedLength * 100))
+                $received = $capturedDlEvent.GetSizeProgress($capturedTotal.Value, $capturedLength)
                 $pbTask.SetDescription("[lightyellow3]Downloading[/] [grey]$received[/]")
                 $pbTask.SetValue($pct)
               } else {
-                # Event data not yet available — indeterminate heartbeat
+                # indeterminate: heartbeat tick
+                $received = $capturedDlEvent.GetSizeProgress($capturedTotal.Value, $capturedTotal.Value)
+                $pbTask.SetDescription("[lightyellow3]Downloading[/] [grey]$received[/]")
                 $pbTask.SetValue(0)
               }
-              [System.Threading.Thread]::Sleep(50)
             }
             $pbTask.Complete()
           }
         )
+        $totalBytesReceived = $capturedTotal.Value
       } else {
-        # No progress UI — just wait for completion
-        while (!$task.IsCompleted) {
-          [System.Threading.Thread]::Sleep(50)
+        # No progress UI
+        while ($true) {
+          $bytesRead = $stream.Read($buffer, 0, $buffer.Length)
+          if ($bytesRead -le 0) { break }
+          $totalBytesReceived += $bytesRead
+          $fileStream.Write($buffer, 0, $bytesRead)
         }
       }
 
-      if ($task.IsFaulted) {
-        throw $task.Exception.GetBaseException()
+      if ($show_progress) {
+        if ($contentLength -le 0 -or $totalBytesReceived -ge $contentLength) {
+          $console.MarkupLine("  [green]✓ Downloaded $($dlEvent.GetSizeProgress($totalBytesReceived, $totalBytesReceived))[/]")
+        } else {
+          $console.MarkupLine("  [red]✗ Download failed: $($Uri.AbsoluteUri)[/]")
+        }
       }
     } catch {
       $console.MarkupLine("  [red]$($_.Exception.Message)[/]")
       throw $_
     } finally {
-      if ($show_progress -and $null -ne $dlEvent.Data) {
-        if ($dlEvent.Data.BytesReceived -eq $dlEvent.Data.TotalBytesToReceive -and $dlEvent.Data.TotalBytesToReceive -gt 0) {
-          $console.MarkupLine("  [green]✓ Downloaded $($dlEvent.GetSizeProgress())[/]")
-        } else {
-          $console.MarkupLine("  [red]✗ Download failed: $($Uri.AbsoluteUri)[/]")
-        }
+      if ($verbose -and [IO.File]::Exists($outPath)) {
+        $console.MarkupLine("  [steelblue1]OutPath: '[/][white]$outPath[/][steelblue1]'[/]")
       }
-      if ($verbose -and [IO.File]::Exists($OutFile)) {
-        $console.MarkupLine("  [steelblue1]OutPath: '[/][white]$OutFile[/][steelblue1]'[/]")
-      }
-      Invoke-Command { $webClient.Dispose(); Unregister-Event -SourceIdentifier $dlEvent.Id -Force -ea Ignore } -ea Ignore
+      try { Invoke-Command -ScriptBlock { if ($stream) { $stream.Close() }; if ($fileStream) { $fileStream.Close() }; if ($response) { $response.Dispose() } } -ErrorAction SilentlyContinue } catch {}
     }
 
-    if ([IO.File]::Exists($OutFile)) {
-      return Get-Item $OutFile
+    if ([IO.File]::Exists($outPath)) {
+      return Get-Item $outPath
     } else {
-      return [IO.FileInfo]::new($OutFile)
+      return [IO.FileInfo]::new($outPath)
     }
   }
 }
