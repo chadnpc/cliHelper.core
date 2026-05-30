@@ -557,9 +557,9 @@ class FigletFont {
   [char]$Hardblank
   [int]$SmushingRules
 
-  FigletFont() {}
+  FigletFont() { [void]$this.ToDefault() }
   FigletFont([string]$Name) {
-    [void][FigletFont]::From([FigletFontName]$Name, [ref]$this)
+    [void][FigletFont]::From($Name, [ref]$this)
   }
   FigletFont([FigletFontName]$Name) {
     [void][FigletFont]::From($Name, [ref]$this)
@@ -567,7 +567,6 @@ class FigletFont {
   FigletFont([List[FigletCharacter]]$characters, [FigletHeader]$header) {
     $this._characters = [Dictionary[int, FigletCharacter]]::new()
     foreach ($c in $characters) { $this._characters[$c.Code] = $c }
-
     $this.Height = $header.Height
     $this.Baseline = $header.Baseline
     $this.MaxWidth = $header.MaxLength
@@ -581,27 +580,41 @@ class FigletFont {
       $this.SmushingRules = 0
     }
   }
-  static [FigletFont] Default() {
-    if ($null -eq [FigletFont]::STANDARD) {
-      [FigletFont]::STANDARD = [FigletFont]::new("standard")
-    }
-    return [FigletFont]::STANDARD
+  static [FigletFont] Create() {
+    return [FigletFont]::new().ToDefault()
+  }
+  static [FigletFont] Create([string]$Name) {
+    return [FigletFont]::new().To($Name)
+  }
+  static [FigletFont] Create([FigletFontName]$Name) {
+    return [FigletFont]::new().To($Name)
+  }
+  [FigletFont] ToDefault() {
+    return $this.To("STANDARD")
+  }
+  [FigletFont] To([FigletFontName]$Name) {
+    return [FigletFont]::From($Name, [ref]$this)
   }
   static [FigletFont] From([FigletFontName]$Name, [ref]$o) {
-    if ($null -eq [FigletFont]::$Name) {
-      $font_flf = [FigletFont]::GetFontflfPath($Name.ToString())
-      $font = [FigletFont]::Load($font_flf)
-      $o.Value._characters = $font._characters
-      $o.Value.Height = $font.Height
-      $o.Value.Baseline = $font.Baseline
-      $o.Value.MaxWidth = $font.MaxWidth
-      $o.Value.Hardblank = $font.Hardblank
-      $o.Value.SmushingRules = $font.SmushingRules
-      [FigletFont]::$Name = $o.Value
-    } else {
-      Write-Host "using font $Name" -f Green
+    $font_flf = [FigletFont]::GetFontflfPath("$Name")
+    $font = $null -ne [FigletFont]::$Name ? [FigletFont]::$Name : [FigletFont]::Load($font_flf)
+    if ($o.Value -isnot [FigletFont]) {
+      throw "$($o.Value.GetType().FullName) isnot [FigletFont]"
     }
-    return [FigletFont]::$Name
+    $o.Value._characters = $font._characters
+    $o.Value.Height = $font.Height
+    $o.Value.Baseline = $font.Baseline
+    $o.Value.MaxWidth = $font.MaxWidth
+    $o.Value.Hardblank = $font.Hardblank
+    $o.Value.SmushingRules = $font.SmushingRules
+    [FigletFont]::$Name = $o.Value
+    return $o.Value
+  }
+  static [FigletFont] Default() {
+    if ($null -eq [FigletFont]::STANDARD) {
+      [FigletFont]::STANDARD = [FigletFont]::new("STANDARD")
+    }
+    return [FigletFont]::STANDARD
   }
   static [FigletFont] Load([string]$path) {
     return [FigletFont]::Load([System.IO.FileInfo]::new([PsModuleBase]::GetUnResolvedPath($path)))
