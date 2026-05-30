@@ -162,7 +162,7 @@ class ConsoleHelper {
     )
   }
   static [void] DemoFigletText() {
-    $fig = [FigletText]::new([FigletFont]"DEFAULT_3D", 'ansiconsole')
+    $fig = [FigletText]::new([FigletFont]"DEFAULT_3D", 'chadnpc')
     [AnsiConsole]::Console.Write($fig)
   }
   static [object] DemoSearchableListPrompt() {
@@ -361,7 +361,7 @@ class ConsoleHelper {
       DemoJSONRendering                          = "JSON preview/rendering."
       DemoChartsandCalendar                      = "Charts and Calendar."
       DemoProgress                               = "Animated Progress."
-      DemoFigletText                             = "FigletText Placeholder."
+      DemoFigletText                             = "FigletText rendering."
       DemoSearchableListPrompt                   = "Searchable Interactive ListPrompt."
       DemoAnsiInThreadrunner                     = "Ansi color ouptut in Threadrunner"
       DemoFailingTaskInThreadrunner              = "How threadrunner handles failing tasks"
