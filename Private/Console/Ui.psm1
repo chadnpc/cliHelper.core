@@ -36,7 +36,7 @@ class AnsiConsoleFacade : IAnsiConsole {
     $this.Write($string, $false)
   }
   [void] Write([string]$string, [bool]$animate) {
-    $this.toggle_animation($animate)
+    $this.use_animation($animate)
     $this.Write([Text]$string)
   }
   [void] Write([IRenderable]$renderable) {
@@ -52,7 +52,7 @@ class AnsiConsoleFacade : IAnsiConsole {
     $this.WriteLine($string, $false)
   }
   [void] WriteLine([string]$string, [bool]$animate) {
-    $this.toggle_animation($animate)
+    $this.use_animation($animate)
     $this.WriteObject($string)
     $this._writer.WriteLine()
   }
@@ -132,7 +132,7 @@ class AnsiConsoleFacade : IAnsiConsole {
   [AnsiWriter] GetWriter() {
     return $this._writer
   }
-  hidden [void] toggle_animation([bool]$condition) {
+  hidden [void] use_animation([bool]$condition) {
     # .NOTES
     # typing animation only works when we use $host.UI.Write(..) not [console]::write(..)
     $this._writer._output.UseTypingEffect = $condition
