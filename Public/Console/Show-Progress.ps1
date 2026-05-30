@@ -10,8 +10,9 @@ function Show-Progress {
     $progress = [Progress]::new([AnsiConsole]::Console)
     $progress.RefreshRateMs = 80
     $progress.Start([Action[ProgressContext]] {
-      param([ProgressContext]$ctx)
-      & $Action $ctx
-    })
+        param([ProgressContext]$ctx)
+        & $Action $ctx
+      }
+    )
   }
 }
