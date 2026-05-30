@@ -630,7 +630,7 @@ class FigletFont {
       # skip this file
       return $null
     }
-    return [FigletFont]::Parse([IO.File]::ReadAllText($file.FullName))
+    return [FigletFont]::ParseFlfSource([IO.File]::ReadAllText($file.FullName))
   }
   static [void] LoadAll() {
     $fonts = [FigletFont]::GetSupportedFontNames()
@@ -648,7 +648,7 @@ class FigletFont {
     ).Name
   }
 
-  static [FigletFont] Parse([string]$source) {
+  static [FigletFont] ParseFlfSource([string]$source) {
     return [FigletFontParser]::Parse($source)
   }
 
