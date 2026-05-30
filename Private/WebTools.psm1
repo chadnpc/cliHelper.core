@@ -81,15 +81,15 @@ class DownloadHelper {
     if ([string]::IsNullOrWhiteSpace($Progress_Msg)) { $Progress_Msg = "Downloading $name" }
 
     # --- Runtime type resolution (avoids parse-time forward-ref failures) ---
-    $consoleType        = [type]'AnsiConsole'
-    $progressType       = [type]'Progress'
-    $settingsType       = [type]'ProgressTaskSettings'
-    $descColType        = [type]'TaskDescriptionColumn'
+    $consoleType = [type]'AnsiConsole'
+    $progressType = [type]'Progress'
+    $settingsType = [type]'ProgressTaskSettings'
+    $descColType = [type]'TaskDescriptionColumn'
     $progressBarColType = [type]'ProgressBarColumn'
-    $pctColType         = [type]'PercentageColumn'
+    $pctColType = [type]'PercentageColumn'
 
-    $console  = $consoleType::Console
-    $console.MarkupLine("[steelblue1][+][/] [steelblue1]$Progress_Msg[/]")    
+    $console = $consoleType::Console
+    $console.MarkupLine("[steelblue1][+][/] [steelblue1]$Progress_Msg[/]")
     $stream = $null
     $fileStream = $null
     $response = $null
@@ -99,7 +99,6 @@ class DownloadHelper {
     try {
       $request = [System.Net.HttpWebRequest]::Create($url)
       $request.UserAgent = "Mozilla/5.0"
-      
       $fileStream = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
       $totalBytesReceived = 0
       $buffer = New-Object byte[] 8192
@@ -112,8 +111,8 @@ class DownloadHelper {
         $progress.Columns.Add($progressBarColType::new($progress))
         $progress.Columns.Add($pctColType::new($progress))
 
-        $capturedMsg      = $Progress_Msg
-        $capturedBuffer   = $buffer
+        $capturedMsg = $Progress_Msg
+        $capturedBuffer = $buffer
         $capturedFileStream = $fileStream
         $capturedSettings = $settingsType::new()
         $capturedSettings.MaxValue = 100
@@ -152,7 +151,7 @@ class DownloadHelper {
               if ($bytesRead -le 0) { break }
               $capturedTotal.Value += $bytesRead
               $capturedFileStream.Write($capturedBuffer, 0, $bytesRead)
-              
+
               if ($contentLength -gt 0) {
                 $pct = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $contentLength * 100))
                 $task.SetValue($pct)
@@ -195,14 +194,15 @@ class DownloadHelper {
     $show_progress = $this.DownloadOptions.ShowProgress
 
     # --- Runtime type resolution ---
-    $consoleType        = [type]'AnsiConsole'
-    $progressType       = [type]'Progress'
-    $settingsType       = [type]'ProgressTaskSettings'
-    $descColType        = [type]'TaskDescriptionColumn'
+    $consoleType = [type]'AnsiConsole'
+    $progressType = [type]'Progress'
+    $settingsType = [type]'ProgressTaskSettings'
+    $descColType = [type]'TaskDescriptionColumn'
     $progressBarColType = [type]'ProgressBarColumn'
-    $pctColType         = [type]'PercentageColumn'
+    $pctColType = [type]'PercentageColumn'
 
     $console = $consoleType::Console
+    $console.use_animation($false)
 
     if ($verbose) {
       $console.MarkupLine("  [steelblue1]Attempting to download '[/][white]$Uri[/][steelblue1]' ...[/]")
@@ -219,7 +219,7 @@ class DownloadHelper {
       $request = [System.Net.HttpWebRequest]::Create($Uri)
       $request.UserAgent = "Mozilla/5.0"
       $buffer = New-Object byte[] 8192
-      
+
       $fileStream = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
       $totalBytesReceived = 0
 
@@ -231,7 +231,7 @@ class DownloadHelper {
         $progress.Columns.Add($progressBarColType::new($progress))
         $progress.Columns.Add($pctColType::new($progress))
 
-        $capturedBuffer   = $buffer
+        $capturedBuffer = $buffer
         $capturedFileStream = $fileStream
         $capturedSettings = $settingsType::new()
         $capturedSettings.MaxValue = 100
@@ -272,7 +272,7 @@ class DownloadHelper {
               if ($bytesRead -le 0) { break }
               $capturedTotal.Value += $bytesRead
               $capturedFileStream.Write($capturedBuffer, 0, $bytesRead)
-              
+
               if ($contentLength -gt 0) {
                 $pct = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $contentLength * 100))
                 $received = $capturedDlEvent.GetSizeProgress($capturedTotal.Value, $contentLength)
