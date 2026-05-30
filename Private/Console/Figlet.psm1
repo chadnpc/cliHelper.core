@@ -160,6 +160,9 @@ class FigletFontParser {
 # # Get a specific font
 # [FigletFont]"DEFAULT_3D"
 # .EXAMPLE
+# # String Casting
+#  "SWEET" -as [FigletFont]
+# .EXAMPLE
 # # Get all available fonts
 # [FigletFont]::GetAvailableFonts()
 # .EXAMPLE
