@@ -23,7 +23,7 @@
 
 ## Features
 
-**🎨 Advanced UI & Console Rendering**
+**🎨 UI & Console Rendering**
 - **Rich Text & Styling:** Markup, Alignment, Rules, Emojis, and full 24-bit RGB / 256-color support.
 - **Complex Layouts:** Responsive Grids, Rows, Columns, Panels, and Trees.
 - **Data Display:** Highly customizable Tables (6+ border styles) and syntax-highlighted JSON rendering.
@@ -38,7 +38,7 @@
 - **Advanced Selection:** Searchable ListPrompt for filtering through large datasets interactively.
 - **Convenience Cmdlets:** Wrapper cmdlets provided for all UI elements and prompts, allowing seamless integration in PowerShell scripts without needing to instantiate classes directly.
 
-**⚙️ Robust Background Processing & Networking**
+**⚙️ Background Processing**
 - **ThreadRunner:** Run parallel jobs with thread-safe live console output (no more mangled text).
 - **Resiliency:** `Result` pattern (borrowed from Rust) for safe, immutable error handling without throwing exceptions.
 - **Retriable Tasks:** Built-in `Invoke-RetriableCommand` and background task abstractions (`New-Task`, `Wait-Task`).
@@ -54,28 +54,8 @@ then run demos
 
 ```PowerShell
 Import-Module cliHelper.core
-$still_failing = [ConsoleHelper]::Run_Interactive_Demos()
-```
-
-
-other examples:
-
-
-```powershell
-[Emoji]::Replace('Deploy :rocket: status :white_check_mark:')
-# Deploy 🚀 status ✅
-```
-
-Objects preview/rendering:
-
-```powershell
-$data = [ordered]@{
-  service = 'api'
-  healthy = $true
-  latency = 24
-}
-
-[AnsiConsole]::Console.Write([JsonText]::new($data))
+$any_failing_demos = [ConsoleHelper]::Run_Interactive_Demos()
+$any_failing_demos.Count -eq 0 | Should -Be $true
 ```
 
 ## requirements
