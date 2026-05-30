@@ -163,7 +163,6 @@ class ModuleTools {
 
 class ProgressUtil {
   static [PsRecord] $data
-
   static ProgressUtil() {
     # Static constructor: build $data explicitly to avoid PsRecord's broken implicit
     # hashtable-cast (which fails on non-hashtable values like string arrays & scriptblocks).
@@ -213,13 +212,13 @@ class ProgressUtil {
     }
 
     # --- Runtime type resolution (avoids parse-time forward-reference failures) ---
-    $consoleType       = [type]'AnsiConsole'
-    $progressType      = [type]'Progress'
-    $settingsType      = [type]'ProgressTaskSettings'
-    $descColType       = [type]'TaskDescriptionColumn'
+    $consoleType = [type]'AnsiConsole'
+    $progressType = [type]'Progress'
+    $settingsType = [type]'ProgressTaskSettings'
+    $descColType = [type]'TaskDescriptionColumn'
     $progressBarColType = [type]'ProgressBarColumn'
-    $pctColType        = [type]'PercentageColumn'
-    $colorType         = [type]'Color'
+    $pctColType = [type]'PercentageColumn'
+    $colorType = [type]'Color'
 
     # Resolve markup-safe color strings from legacy color names
     $resolveMarkup = {
@@ -233,7 +232,7 @@ class ProgressUtil {
     $barColor = & $resolveMarkup $PBcolor 'seagreen1'
     $msgColor = & $resolveMarkup ([ProgressUtil]::data.ProgressMsgcolor) 'lightyellow3'
 
-    $console  = $consoleType::Console
+    $console = $consoleType::Console
     $progress = $progressType::new($console)
     $progress.RefreshRateMs = 80
     $progress.Columns.Clear()
@@ -242,19 +241,19 @@ class ProgressUtil {
     $progress.Columns.Add($pctColType::new($progress))
 
     # Capture locals for the action closure
-    $capturedPct       = [Math]::Max(0, [Math]::Min(100, $percent))
-    $capturedMsg       = $message
-    $capturedBarColor  = $barColor
-    $capturedMsgColor  = $msgColor
+    $capturedPct = [Math]::Max(0, [Math]::Min(100, $percent))
+    $capturedMsg = $message
+    $capturedBarColor = $barColor
+    $capturedMsgColor = $msgColor
     $capturedCompleted = $Completed
-    $capturedSettings  = $settingsType::new()
+    $capturedSettings = $settingsType::new()
     $capturedSettings.MaxValue = 100
     $capturedSettings.IsIndeterminate = $false
 
     $progress.Start([System.Action[object]] {
         param([object]$ctx)
         $label = "[$capturedMsgColor]$capturedMsg[/]"
-        $task  = $ctx.AddTask($label, $capturedSettings)
+        $task = $ctx.AddTask($label, $capturedSettings)
         # Jump straight to the target percentage
         $task.SetValue($capturedPct)
         if ($capturedCompleted) {
