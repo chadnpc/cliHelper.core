@@ -305,7 +305,7 @@ class ConsoleHelper {
     $results | Out-Null
   }
   static [void] DemoStatus() {
-    $writer = [AnsiConsole]::Console.Writer
+    $writer = [AnsiConsole]::Console.GetWriter()
     $status = [Status]::new($writer)
     $status.RefreshRateMs = 80
 
