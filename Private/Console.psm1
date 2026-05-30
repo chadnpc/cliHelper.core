@@ -366,7 +366,7 @@ class ConsoleHelper {
       DemoAnsiInThreadrunner                     = "Ansi color ouptut in Threadrunner"
       DemoFailingTaskInThreadrunner              = "How threadrunner handles failing tasks"
       DemoSimultaneousBackgroundJobsWithFailures = "Simultaneous Background Jobs with Failures"
-      # DemoStatus                                 = "Status with Spinner." # failing soo bad! - will crash or freeze the whole terminal ☠︎︎
+      DemoStatus                                 = "Status with Spinner."
       DemoTextPrompt                             = "Text Prompt"
       DemoConfirmPrompt                          = "Confirmation Prompt"
       DemoSelectionPrompt                        = "Selection Prompt"
