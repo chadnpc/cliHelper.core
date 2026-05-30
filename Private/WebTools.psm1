@@ -55,14 +55,7 @@ class DownloadHelper {
   [IO.FileInfo] DownloadFile([uri]$url, [string]$outFile, [bool]$Force) {
     [ValidateNotNullOrEmpty()][uri]$url = $url
     [ValidateNotNullOrEmpty()][string]$outFile = $outFile
-    $stream = $null; $fileStream = $null
     $name = Split-Path $url -Leaf
-    $request = [System.Net.HttpWebRequest]::Create($url)
-    $request.UserAgent = "Mozilla/5.0"
-    $response = $request.GetResponse()
-    $contentLength = $response.ContentLength
-    $stream = $response.GetResponseStream()
-    $buffer = New-Object byte[] 8192
     $outPath = [IO.Path]::GetFullPath($outFile)
     if ([System.IO.Directory]::Exists($outFile)) {
       if (!$Force) { throw [ArgumentException]::new("Please provide valid file path, not a directory.", "outFile") }
@@ -74,103 +67,107 @@ class DownloadHelper {
       if (!$Force) { throw "$outFile already exists" }
       Remove-Item $outPath -Force -ErrorAction Ignore | Out-Null
     }
-    $fileStream = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-    $totalBytesReceived = 0
-    $Progress_Msg = $this.DownloadOptions.ProgressMessage
-    $show_progress = $this.DownloadOptions.ShowProgress
+
+    $Progress_Msg    = $this.DownloadOptions.ProgressMessage
+    $show_progress   = $this.DownloadOptions.ShowProgress
     if ([string]::IsNullOrWhiteSpace($Progress_Msg)) { $Progress_Msg = "Downloading $name" }
 
     # --- Runtime type resolution (avoids parse-time forward-ref failures) ---
-    $consoleType = [type]'AnsiConsole'
-    $progressType = [type]'Progress'
-    $settingsType = [type]'ProgressTaskSettings'
-    $descColType = [type]'TaskDescriptionColumn'
+    $consoleType        = [type]'AnsiConsole'
+    $progressType       = [type]'Progress'
+    $statusType         = [type]'Status'
+    $settingsType       = [type]'ProgressTaskSettings'
+    $descColType        = [type]'TaskDescriptionColumn'
     $progressBarColType = [type]'ProgressBarColumn'
-    $pctColType = [type]'PercentageColumn'
+    $pctColType         = [type]'PercentageColumn'
+    $spinnerColType     = [type]'SpinnerColumn'
+    $spinnerKnownType   = [type]'SpinnerKnown'
 
     $console = $consoleType::Console
     $console.MarkupLine("[steelblue1][+][/] [steelblue1]$Progress_Msg[/]")
-    $stream = $null
-    $fileStream = $null
-    $response = $null
-    $Outdir = [IO.Path]::GetDirectoryName($outPath)
-    if (![System.IO.Directory]::Exists($Outdir)) { [void][System.IO.Directory]::CreateDirectory($Outdir) }
+
+    $stream              = $null
+    $fileStream          = $null
+    $response            = $null
+    $totalBytesReceived  = 0
+    $buffer              = New-Object byte[] 8192
+    $fileStream          = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
 
     try {
-      $request = [System.Net.HttpWebRequest]::Create($url)
-      $request.UserAgent = "Mozilla/5.0"
-      $fileStream = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-      $totalBytesReceived = 0
-      $buffer = New-Object byte[] 8192
+      $request            = [System.Net.HttpWebRequest]::Create($url)
+      $request.UserAgent  = "Mozilla/5.0"
+      $capturedRequest    = $request
+      $capturedResponseRef = [ref]$null
 
       if ($show_progress) {
+        # ── Phase 1: Spinner while waiting for the HTTP response ──────────────
+        $status = $statusType::new($console.GetWriter())
+        $status.Spinner       = $spinnerKnownType::Dots
+        $status.RefreshRateMs = 80
+
+        $status.Start('Connecting…', [System.Action[[type]'StatusContext']] {
+            param($sctx)
+            $responseTask = $capturedRequest.GetResponseAsync()
+            while (!$responseTask.IsCompleted) {
+              [System.Threading.Thread]::Sleep(50)
+            }
+            if ($responseTask.IsFaulted) { throw $responseTask.Exception.InnerException }
+            $capturedResponseRef.Value = $responseTask.Result
+            $sctx.Complete()
+          }
+        )
+
+        $response      = $capturedResponseRef.Value
+        $contentLength = $response.ContentLength
+        $stream        = $response.GetResponseStream()
+
+        # ── Phase 2: Deterministic progress bar for the download body ─────────
+        $capturedBuffer     = $buffer
+        $capturedFileStream = $fileStream
+        $capturedSettings   = $settingsType::new()
+        $capturedSettings.MaxValue        = 100
+        $capturedSettings.IsIndeterminate = ($contentLength -le 0)
+
+        $capturedTotal     = [ref]$totalBytesReceived
+        $capturedStream    = $stream
+        $capturedLen       = $contentLength
+        $capturedMsg       = $Progress_Msg
+
         $progress = $progressType::new($console)
         $progress.RefreshRateMs = 80
         $progress.Columns.Clear()
         $progress.Columns.Add($descColType::new($progress))
         $progress.Columns.Add($progressBarColType::new($progress))
         $progress.Columns.Add($pctColType::new($progress))
-
-        $capturedMsg = $Progress_Msg
-        $capturedBuffer = $buffer
-        $capturedFileStream = $fileStream
-        $capturedSettings = $settingsType::new()
-        $capturedSettings.MaxValue = 100
-        $capturedSettings.IsIndeterminate = $true # Indeterminate while connecting
-
-        $capturedTotal = [ref]$totalBytesReceived
-        $capturedRequest = $request
-        $capturedResponseRef = [ref]$null
-        $capturedStreamRef = [ref]$null
+        $progress.Columns.Add($spinnerColType::new($progress))
 
         $progress.Start([System.Action[object]] {
             param([object]$ctx)
-            $task = $ctx.AddTask("[lightyellow3]Connecting...[/]", $capturedSettings)
-
-            $responseTask = $capturedRequest.GetResponseAsync()
-            while (!$responseTask.IsCompleted) {
-              $task.SetValue(0) # Heartbeat
-              [System.Threading.Thread]::Sleep(50)
-            }
-            if ($responseTask.IsFaulted) { throw $responseTask.Exception.InnerException }
-            $res = $responseTask.Result
-            $capturedResponseRef.Value = $res
-            $contentLength = $res.ContentLength
-            $streamData = $res.GetResponseStream()
-            $capturedStreamRef.Value = $streamData
-
-            if ($contentLength -gt 0) {
-              $task._state.IsIndeterminate = $false
-              $task.SetDescription("[lightyellow3]$capturedMsg[/]")
-            } else {
-              $task.SetDescription("[lightyellow3]$capturedMsg[/]")
-            }
+            $task = $ctx.AddTask("[lightyellow3]$capturedMsg[/]", $capturedSettings)
 
             while ($true) {
-              $bytesRead = $streamData.Read($capturedBuffer, 0, $capturedBuffer.Length)
+              $bytesRead = $capturedStream.Read($capturedBuffer, 0, $capturedBuffer.Length)
               if ($bytesRead -le 0) { break }
               $capturedTotal.Value += $bytesRead
               $capturedFileStream.Write($capturedBuffer, 0, $bytesRead)
 
-              if ($contentLength -gt 0) {
-                $pct = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $contentLength * 100))
+              if ($capturedLen -gt 0) {
+                $pct = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $capturedLen * 100))
                 $task.SetValue($pct)
               } else {
-                # indeterminate: heartbeat tick
-                $task.SetValue(0)
+                $task.SetValue(0) # indeterminate: just tick
               }
             }
-            if ($contentLength -le 0) { $task._state.IsIndeterminate = $false }
+            if ($capturedLen -le 0) { $task._state.IsIndeterminate = $false }
             $task.Complete()
           }
         )
         $totalBytesReceived = $capturedTotal.Value
-        $response = $capturedResponseRef.Value
-        $stream = $capturedStreamRef.Value
       } else {
         # No progress display — drain the stream directly
-        $response = $request.GetResponse()
-        $stream = $response.GetResponseStream()
+        $response      = $request.GetResponse()
+        $contentLength = $response.ContentLength
+        $stream        = $response.GetResponseStream()
         while ($true) {
           $bytesRead = $stream.Read($buffer, 0, $buffer.Length)
           if ($bytesRead -le 0) { break }
@@ -181,7 +178,9 @@ class DownloadHelper {
     } catch {
       throw $_
     } finally {
-      try { Invoke-Command -ScriptBlock { if ($stream) { $stream.Close() }; if ($fileStream) { $fileStream.Close() }; if ($response) { $response.Dispose() } } -ErrorAction SilentlyContinue } catch { $null }
+      try { if ($stream)    { $stream.Close() }    } catch {}
+      try { if ($fileStream){ $fileStream.Close() }} catch {}
+      try { if ($response)  { $response.Dispose() }} catch {}
     }
     return (Get-Item $outPath)
   }
@@ -189,17 +188,21 @@ class DownloadHelper {
     <#
     .SYNOPSIS
       Downloads a file synchronously while providing a live progress bar.
-      Bypasses PowerShell event queues by chunking the download stream directly.
+      Phase 1 — spinner while waiting for HTTP response headers.
+      Phase 2 — deterministic progress bar while streaming the body.
     #>
     $show_progress = $this.DownloadOptions.ShowProgress
 
-    # --- Runtime type resolution ---
-    $consoleType = [type]'AnsiConsole'
-    $progressType = [type]'Progress'
-    $settingsType = [type]'ProgressTaskSettings'
-    $descColType = [type]'TaskDescriptionColumn'
+    # --- Runtime type resolution (avoids parse-time forward-ref failures) ---
+    $consoleType        = [type]'AnsiConsole'
+    $progressType       = [type]'Progress'
+    $statusType         = [type]'Status'
+    $settingsType       = [type]'ProgressTaskSettings'
+    $descColType        = [type]'TaskDescriptionColumn'
     $progressBarColType = [type]'ProgressBarColumn'
-    $pctColType = [type]'PercentageColumn'
+    $pctColType         = [type]'PercentageColumn'
+    $spinnerColType     = [type]'SpinnerColumn'
+    $spinnerKnownType   = [type]'SpinnerKnown'
 
     $console = $consoleType::Console
     $console.use_animation($false)
@@ -208,96 +211,96 @@ class DownloadHelper {
       $console.MarkupLine("  [steelblue1]Attempting to download '[/][white]$Uri[/][steelblue1]' ...[/]")
     }
 
-    $stream = $null
-    $fileStream = $null
-    $response = $null
-    $outPath = [IO.Path]::GetFullPath($OutFile)
-    $Outdir = [IO.Path]::GetDirectoryName($outPath)
+    $stream              = $null
+    $fileStream          = $null
+    $response            = $null
+    $contentLength       = 0
+    $totalBytesReceived  = 0
+    $outPath             = [IO.Path]::GetFullPath($OutFile)
+    $Outdir              = [IO.Path]::GetDirectoryName($outPath)
     if (![System.IO.Directory]::Exists($Outdir)) { [void][System.IO.Directory]::CreateDirectory($Outdir) }
 
     try {
-      $request = [System.Net.HttpWebRequest]::Create($Uri)
+      $request           = [System.Net.HttpWebRequest]::Create($Uri)
       $request.UserAgent = "Mozilla/5.0"
-      $buffer = New-Object byte[] 8192
-
-      $fileStream = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-      $totalBytesReceived = 0
+      $buffer            = New-Object byte[] 8192
+      $fileStream        = [System.IO.FileStream]::new($outPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+      $capturedRequest   = $request
+      $capturedResponseRef = [ref]$null
 
       if ($show_progress) {
+        # ── Phase 1: Spinner while waiting for the HTTP response ──────────────
+        $status = $statusType::new($console.GetWriter())
+        $status.Spinner       = $spinnerKnownType::Dots
+        $status.RefreshRateMs = 80
+
+        $status.Start('Connecting…', [System.Action[[type]'StatusContext']] {
+            param($sctx)
+            $responseTask = $capturedRequest.GetResponseAsync()
+            while (!$responseTask.IsCompleted) {
+              [System.Threading.Thread]::Sleep(50)
+            }
+            if ($responseTask.IsFaulted) { throw $responseTask.Exception.InnerException }
+            $capturedResponseRef.Value = $responseTask.Result
+            $sctx.Complete()
+          }
+        )
+
+        $response      = $capturedResponseRef.Value
+        $contentLength = $response.ContentLength
+        $stream        = $response.GetResponseStream()
+
+        # ── Phase 2: Deterministic progress bar for the download body ─────────
+        $capturedBuffer     = $buffer
+        $capturedFileStream = $fileStream
+        $capturedDlEvent    = $dlEvent
+        $capturedSettings   = $settingsType::new()
+        $capturedSettings.MaxValue        = 100
+        $capturedSettings.IsIndeterminate = ($contentLength -le 0)
+
+        $capturedTotal  = [ref]$totalBytesReceived
+        $capturedStream = $stream
+        $capturedLen    = $contentLength
+
         $progress = $progressType::new($console)
         $progress.RefreshRateMs = 80
         $progress.Columns.Clear()
         $progress.Columns.Add($descColType::new($progress))
         $progress.Columns.Add($progressBarColType::new($progress))
         $progress.Columns.Add($pctColType::new($progress))
-
-        $capturedBuffer = $buffer
-        $capturedFileStream = $fileStream
-        $capturedSettings = $settingsType::new()
-        $capturedSettings.MaxValue = 100
-        $capturedSettings.IsIndeterminate = $true # Indeterminate initially while connecting
-
-        $capturedTotal = [ref]$totalBytesReceived
-        $capturedDlEvent = $dlEvent
-        $capturedRequest = $request
-        $capturedResponseRef = [ref]$null
-        $capturedStreamRef = [ref]$null
+        $progress.Columns.Add($spinnerColType::new($progress))
 
         $progress.Start([System.Action[object]] {
             param([object]$ctx)
-            $pbTask = $ctx.AddTask('[lightyellow3]Connecting...[/]', $capturedSettings)
-
-            # Connect asynchronously to allow UI ticks
-            $responseTask = $capturedRequest.GetResponseAsync()
-            while (!$responseTask.IsCompleted) {
-              $pbTask.SetValue(0)
-              [System.Threading.Thread]::Sleep(50)
-            }
-            if ($responseTask.IsFaulted) { throw $responseTask.Exception.InnerException }
-            $res = $responseTask.Result
-            $capturedResponseRef.Value = $res
-            $contentLength = $res.ContentLength
-            $streamData = $res.GetResponseStream()
-            $capturedStreamRef.Value = $streamData
-
-            if ($contentLength -gt 0) {
-              $pbTask._state.IsIndeterminate = $false
-              $pbTask.SetDescription("[lightyellow3]Downloading[/]")
-            } else {
-              $pbTask.SetDescription("[lightyellow3]Downloading[/]")
-            }
+            $pbTask = $ctx.AddTask('[lightyellow3]Downloading[/]', $capturedSettings)
 
             while ($true) {
-              $bytesRead = $streamData.Read($capturedBuffer, 0, $capturedBuffer.Length)
+              $bytesRead = $capturedStream.Read($capturedBuffer, 0, $capturedBuffer.Length)
               if ($bytesRead -le 0) { break }
               $capturedTotal.Value += $bytesRead
               $capturedFileStream.Write($capturedBuffer, 0, $bytesRead)
 
-              if ($contentLength -gt 0) {
-                $pct = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $contentLength * 100))
-                $received = $capturedDlEvent.GetSizeProgress($capturedTotal.Value, $contentLength)
+              if ($capturedLen -gt 0) {
+                $pct      = [Math]::Min(100, [int][Math]::Round($capturedTotal.Value / $capturedLen * 100))
+                $received = $capturedDlEvent.GetSizeProgress($capturedTotal.Value, $capturedLen)
                 $pbTask.SetDescription("[lightyellow3]Downloading[/] [grey]$received[/]")
                 $pbTask.SetValue($pct)
               } else {
-                # indeterminate: heartbeat tick
                 $received = $capturedDlEvent.GetSizeProgress($capturedTotal.Value, $capturedTotal.Value)
                 $pbTask.SetDescription("[lightyellow3]Downloading[/] [grey]$received[/]")
                 $pbTask.SetValue(0)
               }
             }
-            if ($contentLength -le 0) { $pbTask._state.IsIndeterminate = $false }
+            if ($capturedLen -le 0) { $pbTask._state.IsIndeterminate = $false }
             $pbTask.Complete()
           }
         )
         $totalBytesReceived = $capturedTotal.Value
-        $response = $capturedResponseRef.Value
-        $stream = $capturedStreamRef.Value
-        $contentLength = if ($response) { $response.ContentLength } else { 0 }
       } else {
         # No progress UI
-        $response = $request.GetResponse()
-        $stream = $response.GetResponseStream()
+        $response      = $request.GetResponse()
         $contentLength = $response.ContentLength
+        $stream        = $response.GetResponseStream()
         while ($true) {
           $bytesRead = $stream.Read($buffer, 0, $buffer.Length)
           if ($bytesRead -le 0) { break }
@@ -321,7 +324,9 @@ class DownloadHelper {
       if ($verbose -and [IO.File]::Exists($outPath)) {
         $console.MarkupLine("  [steelblue1]OutPath: '[/][white]$outPath[/][steelblue1]'[/]")
       }
-      try { Invoke-Command -ScriptBlock { if ($stream) { $stream.Close() }; if ($fileStream) { $fileStream.Close() }; if ($response) { $response.Dispose() } } -ErrorAction SilentlyContinue } catch {}
+      try { if ($stream)    { $stream.Close() }    } catch {}
+      try { if ($fileStream){ $fileStream.Close() }} catch {}
+      try { if ($response)  { $response.Dispose() }} catch {}
     }
 
     if ([IO.File]::Exists($outPath)) {
