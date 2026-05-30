@@ -132,7 +132,7 @@ class AnsiConsoleFacade : IAnsiConsole {
   [AnsiWriter] GetWriter() {
     return $this._writer
   }
-  hidden [void] use_animation([bool]$condition) {
+  [void] use_animation([bool]$condition) {
     # .NOTES
     # typing animation only works when we use $host.UI.Write(..) not [console]::write(..)
     $this._writer._output.UseTypingEffect = $condition
