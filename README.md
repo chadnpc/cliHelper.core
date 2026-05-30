@@ -22,17 +22,27 @@
 </div>
 
 ## Features
-- Core rendering pipeline (ANSI codes, colors, styles, decorations)
-- Text widgets (Text, Markup, Paragraph, Align, Panel, Box, Rule)
-- Tables with 6+ border styles
-- Basic Charts (BarChart, BreakdownChart)
-- Tree and Grid layouts
-- Progress bars, live updates, and Status indicators
-- Interactive prompts (TextPrompt, ConfirmationPrompt, SelectionPrompt, MultiSelectionPrompt)
-- JSON tokenization, parsing, and syntax-highlighted rendering
-- Searchable ListPrompt
-- Full color system (256 + RGB support)
-- and many more!
+
+**🎨 Advanced UI & Console Rendering**
+- **Rich Text & Styling:** Markup, Alignment, Rules, Emojis, and full 24-bit RGB / 256-color support.
+- **Complex Layouts:** Responsive Grids, Rows, Columns, Panels, and Trees.
+- **Data Display:** Highly customizable Tables (6+ border styles) and syntax-highlighted JSON rendering.
+- **Visualizations:** BarCharts, BreakdownCharts, Calendars, and 3D Figlet ASCII Art generation.
+
+**⏳ Progress & Status Indicators**
+- **Live Updates:** Smooth, multi-task animated Progress Bars and Spinners.
+- **Status Messages:** Live display contexts and status indicators that don't break console output.
+
+**🕹️ Interactive Prompts**
+- **Input Types:** TextPrompt, ConfirmationPrompt, SelectionPrompt, and MultiSelectionPrompt.
+- **Advanced Selection:** Searchable ListPrompt for filtering through large datasets interactively.
+- **Convenience Cmdlets:** Wrapper cmdlets provided for all UI elements and prompts, allowing seamless integration in PowerShell scripts without needing to instantiate classes directly.
+
+**⚙️ Robust Background Processing & Networking**
+- **ThreadRunner:** Run parallel jobs with thread-safe live console output (no more mangled text).
+- **Resiliency:** `Result` pattern (borrowed from Rust) for safe, immutable error handling without throwing exceptions.
+- **Retriable Tasks:** Built-in `Invoke-RetriableCommand` and background task abstractions (`New-Task`, `Wait-Task`).
+- **Web & Security:** Resilient file downloading, robust REST API helpers, and native AntiVirus (AMSI) integration for attachment scanning.
 
 <h2><b>Usage</b></h2>
 
