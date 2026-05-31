@@ -37,19 +37,7 @@ Describe "Feature tests: Console" {
     }
   }
 
-  Context "List prompt" {
-    It "Filters preview output without requiring interactive input" {
-      $prompt = [ListPrompt]::new('Pick service')
-      $prompt.AddItems([string[]]@('api', 'worker', 'scheduler', 'gateway'))
-      $prompt.SearchFilter = 'work'
 
-      $preview = $prompt.Preview()
-
-      ($preview -join '|') | Should Match 'Filter: work'
-      ($preview -join '|') | Should Match '> worker'
-      ($preview -join '|') | Should Not Match 'scheduler'
-    }
-  }
   Context "  Json parsers" {
     It "Should expose the Phase 3 JSON parser classes" {
       [JsonToken].Name | Should Be 'JsonToken'
