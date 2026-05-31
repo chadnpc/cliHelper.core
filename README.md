@@ -80,4 +80,4 @@ $pester_test_results = .\Test-Module.ps1 -NoBuild
 
 ## license
 
-This project is licensed under the [WTFPL License](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
