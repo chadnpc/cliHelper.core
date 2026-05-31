@@ -10,7 +10,7 @@ Write-Host "      ModuleName    $ModuleName"
 Write-Host "      ModulePath    $ModulePath"
 Write-Host "      Version       $moduleVersion`n"
 
-Get-Module -Name $ModuleName | Remove-Module | Out-Null # Make sure no versions of the module are loaded
+Get-Module -Name $ModuleName | Remove-Module -Verbose -ea Ignore | Out-Null # Make sure no versions of the module are loaded
 
 Write-Host ""
 Describe "Module content tests for $ModuleName" {
